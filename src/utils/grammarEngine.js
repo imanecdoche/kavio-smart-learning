@@ -2568,15 +2568,44 @@ export function getSentenceLogicBlocks({
   useContraction = false,
   activeVerb = 'work',
   subjectType = 'third_singular',
+  sentenceData = null,
 }) {
   const blocks = [];
+  const tokens = sentenceData?.tokens || [];
+
+  const findToken = (role) => tokens.find((t) => t.role === role);
+  const is3sg =
+    subjectType === SUBJECT_TYPES.THIRD_PERSON_SINGULAR ||
+    subjectType === 'third_singular' ||
+    subjectType === 'THIRD_PERSON_SINGULAR';
+  const is1sg =
+    subjectType === SUBJECT_TYPES.FIRST_PERSON ||
+    subjectType === 'first_singular' ||
+    subjectType === 'FIRST_PERSON';
 
   // 1. FUTURE (MODAL + BV)
   if (tense === 'FUTURE') {
-    let modalWord = useContraction && form === 'negative' ? "won't" : (form === 'negative' ? 'will not' : 'will');
-    let nextWord = 'BV';
+    const modalTok =
+      findToken('helper-modal') ||
+      findToken('helper-question') ||
+      findToken('helper-negative');
+    const modalText = modalTok
+      ? modalTok.text.toLowerCase()
+      : useContraction && form === 'negative'
+      ? "won't"
+      : 'will';
+
+    let nextWord = 'be';
     if (aspect === 'SIMPLE') {
-      nextWord = sentenceType === 'nominal' ? 'be' : (isPassive ? 'be' : activeVerb);
+      const verbTok = findToken('verb');
+      nextWord =
+        sentenceType === 'nominal'
+          ? 'be'
+          : isPassive
+          ? 'be'
+          : verbTok
+          ? verbTok.text.toLowerCase()
+          : activeVerb;
     } else if (aspect === 'CONTINUOUS') {
       nextWord = 'be';
     } else if (aspect === 'PERFECT' || aspect === 'PER.CONT') {
@@ -2585,181 +2614,189 @@ export function getSentenceLogicBlocks({
     blocks.push({
       category: 'FUTURE',
       formula: 'MODAL + BV',
-      realization: `${modalWord} ${nextWord}`,
+      realization: `${modalText} ${nextWord}`,
     });
   }
 
   // 2. PERFECT (HAVE + V3)
   if (aspect === 'PERFECT' || aspect === 'PER.CONT') {
-    let haveWord = 'have';
-    if (tense === 'PAST') {
-      haveWord = useContraction && form === 'negative' ? "hadn't" : 'had';
-    } else if (tense === 'PRESENT') {
-      const is3sg = subjectType === 'third_singular';
-      haveWord = is3sg
-        ? (useContraction && form === 'negative' ? "hasn't" : 'has')
-        : (useContraction && form === 'negative' ? "haven't" : 'have');
-    } else {
-      haveWord = 'have';
+    const haveTok =
+      findToken('helper-have') ||
+      (form.includes('question') ? findToken('helper-question') : null) ||
+      findToken('helper-negative');
+    let haveText = haveTok ? haveTok.text.toLowerCase() : null;
+    if (!haveText) {
+      if (tense === 'PAST') {
+        haveText = useContraction && form === 'negative' ? "hadn't" : 'had';
+      } else if (tense === 'PRESENT') {
+        haveText = is3sg
+          ? useContraction && form === 'negative'
+            ? "hasn't"
+            : 'has'
+          : useContraction && form === 'negative'
+          ? "haven't"
+          : 'have';
+      } else {
+        haveText = 'have';
+      }
     }
 
-    let nextV3 = 'been';
-    if (aspect === 'PERFECT') {
-      if (sentenceType === 'verbal' && !isPassive) {
-        nextV3 = getPastParticipleVerb(activeVerb);
-      } else {
-        nextV3 = 'been';
-      }
+    let v3Word = 'been';
+    if (aspect === 'PERFECT' && sentenceType === 'verbal' && !isPassive) {
+      const verbTok = findToken('verb');
+      v3Word = verbTok ? verbTok.text.toLowerCase() : getPastParticipleVerb(activeVerb);
     } else {
-      nextV3 = 'been';
+      v3Word = 'been';
     }
 
     blocks.push({
       category: 'PERFECT',
       formula: 'HAVE + V3',
-      realization: `${haveWord} ${nextV3}`,
+      realization: `${haveText} ${v3Word}`,
     });
   }
 
   // 3. CONTINUOUS (BE + V-ing)
   if (aspect === 'CONTINUOUS' || aspect === 'PER.CONT') {
-    let beWord = 'be';
-    let vIngWord = getVerbIng(activeVerb);
+    let beText = null;
+    let vIngText = null;
 
     if (aspect === 'PER.CONT') {
-      beWord = 'been';
+      beText = 'been';
       if (isPassive || sentenceType === 'nominal') {
-        vIngWord = 'being';
+        vIngText = 'being';
+      } else {
+        const verbTok = findToken('verb');
+        vIngText = verbTok ? verbTok.text.toLowerCase() : getVerbIng(activeVerb);
       }
     } else {
-      if (tense === 'PRESENT') {
-        const is1sg = subjectType === 'first_singular';
-        const is3sg = subjectType === 'third_singular';
-        beWord = is1sg ? 'am' : is3sg ? 'is' : 'are';
-        if (useContraction && form === 'negative') {
-          beWord = is1sg ? 'am not' : is3sg ? "isn't" : "aren't";
-        }
-      } else if (tense === 'PAST') {
-        const isSing = subjectType === 'first_singular' || subjectType === 'third_singular';
-        beWord = isSing ? 'was' : 'were';
-        if (useContraction && form === 'negative') {
-          beWord = isSing ? "wasn't" : "weren't";
-        }
+      const beTok =
+        findToken('helper-be') ||
+        findToken('helper-negative') ||
+        findToken('helper-question');
+      if (beTok) {
+        beText = beTok.text.toLowerCase();
       } else {
-        beWord = 'be';
+        const subjContr = findToken('subject-contracted');
+        if (subjContr && subjContr.contractedHelper) {
+          beText = subjContr.contractedHelper.toLowerCase();
+        } else if (tense === 'PRESENT') {
+          beText = is1sg ? 'am' : is3sg ? 'is' : 'are';
+        } else if (tense === 'PAST') {
+          beText = is1sg || is3sg ? 'was' : 'were';
+        } else {
+          beText = 'be';
+        }
       }
 
       if (isPassive || sentenceType === 'nominal') {
-        vIngWord = 'being';
+        vIngText = 'being';
+      } else {
+        const verbTok = findToken('verb');
+        vIngText = verbTok ? verbTok.text.toLowerCase() : getVerbIng(activeVerb);
       }
     }
 
     blocks.push({
       category: 'CONTINUOUS',
       formula: 'BE + V-ing',
-      realization: `${beWord} ${vIngWord}`,
+      realization: `${beText} ${vIngText}`,
     });
   }
 
   // 4. PASSIVE FORM (BE + V3)
   if (sentenceType === 'verbal' && isPassive) {
-    let beWord = 'be';
-    const v3Word = getPastParticipleVerb(activeVerb);
+    let beText = 'be';
+    const verbTok = findToken('verb');
+    const v3Text = verbTok ? verbTok.text.toLowerCase() : getPastParticipleVerb(activeVerb);
 
     if (aspect === 'SIMPLE') {
-      if (tense === 'PRESENT') {
-        const is1sg = subjectType === 'first_singular';
-        const is3sg = subjectType === 'third_singular';
-        beWord = is1sg ? 'am' : is3sg ? 'is' : 'are';
-        if (useContraction && form === 'negative') {
-          beWord = is1sg ? 'am not' : is3sg ? "isn't" : "aren't";
-        }
+      const beTok =
+        findToken('helper-be') ||
+        findToken('helper-negative') ||
+        findToken('helper-question');
+      if (beTok) {
+        beText = beTok.text.toLowerCase();
+      } else if (tense === 'PRESENT') {
+        beText = is1sg ? 'am' : is3sg ? 'is' : 'are';
       } else if (tense === 'PAST') {
-        const isSing = subjectType === 'first_singular' || subjectType === 'third_singular';
-        beWord = isSing ? 'was' : 'were';
-        if (useContraction && form === 'negative') {
-          beWord = isSing ? "wasn't" : "weren't";
-        }
-      } else {
-        beWord = 'be';
+        beText = is1sg || is3sg ? 'was' : 'were';
       }
     } else if (aspect === 'CONTINUOUS') {
-      beWord = 'being';
+      beText = 'being';
     } else if (aspect === 'PERFECT') {
-      beWord = 'been';
+      beText = 'been';
     } else if (aspect === 'PER.CONT') {
-      beWord = 'being';
+      beText = 'being';
     }
 
     blocks.push({
       category: 'PASSIVE FORM',
       formula: 'BE + V3',
-      realization: `${beWord} ${v3Word}`,
+      realization: `${beText} ${v3Text}`,
     });
   }
 
   // 5. SIMPLE
   if (aspect === 'SIMPLE' && tense !== 'FUTURE' && !isPassive) {
     if (sentenceType === 'verbal') {
-      if (tense === 'PRESENT') {
-        if (form === 'positive') {
-          const is3sg = subjectType === 'third_singular';
-          const formVerb = is3sg ? getPresentThirdPersonVerb(activeVerb) : activeVerb;
-          blocks.push({
-            category: 'SIMPLE',
-            formula: 'V1 / V-s',
-            realization: formVerb,
-          });
-        } else {
-          const is3sg = subjectType === 'third_singular';
-          const doWord = is3sg
-            ? useContraction ? "doesn't" : 'does not'
-            : useContraction ? "don't" : 'do not';
-          blocks.push({
-            category: 'SIMPLE',
-            formula: 'DO/DOES + BV',
-            realization: `${doWord} ${activeVerb}`,
-          });
-        }
-      } else if (tense === 'PAST') {
-        if (form === 'positive') {
-          blocks.push({
-            category: 'SIMPLE',
-            formula: 'V2',
-            realization: getPastVerb(activeVerb),
-          });
-        } else {
-          const didWord = useContraction ? "didn't" : 'did not';
-          blocks.push({
-            category: 'SIMPLE',
-            formula: 'DID + BV',
-            realization: `${didWord} ${activeVerb}`,
-          });
-        }
+      const verbTok = findToken('verb');
+      const helperTok =
+        findToken('helper-negative') || findToken('helper-question');
+      if (form === 'positive') {
+        const word = verbTok
+          ? verbTok.text.toLowerCase()
+          : tense === 'PAST'
+          ? getPastVerb(activeVerb)
+          : is3sg
+          ? getPresentThirdPersonVerb(activeVerb)
+          : activeVerb;
+        blocks.push({
+          category: 'SIMPLE',
+          formula: tense === 'PAST' ? 'V2' : 'V1 / V-s',
+          realization: word,
+        });
+      } else {
+        const hText = helperTok
+          ? helperTok.text.toLowerCase()
+          : tense === 'PAST'
+          ? 'did'
+          : is3sg
+          ? 'does'
+          : 'do';
+        const vText = verbTok ? verbTok.text.toLowerCase() : activeVerb;
+        blocks.push({
+          category: 'SIMPLE',
+          formula: tense === 'PAST' ? 'DID + BV' : 'DO/DOES + BV',
+          realization: `${hText} ${vText}`,
+        });
       }
     } else {
       // Nominal Simple
-      if (tense === 'PRESENT') {
-        const is1sg = subjectType === 'first_singular';
-        const is3sg = subjectType === 'third_singular';
-        const beWord = is1sg ? 'am' : is3sg ? 'is' : 'are';
-        blocks.push({
-          category: 'SIMPLE',
-          formula: 'BE (V1)',
-          realization: beWord,
-        });
-      } else if (tense === 'PAST') {
-        const isSing = subjectType === 'first_singular' || subjectType === 'third_singular';
-        const beWord = isSing ? 'was' : 'were';
-        blocks.push({
-          category: 'SIMPLE',
-          formula: 'BE (V2)',
-          realization: beWord,
-        });
+      const beTok =
+        findToken('helper-be') ||
+        findToken('helper-negative') ||
+        findToken('helper-question');
+      let beText = beTok ? beTok.text.toLowerCase() : null;
+      if (!beText) {
+        const subjContr = findToken('subject-contracted');
+        if (subjContr && subjContr.contractedHelper) {
+          beText = subjContr.contractedHelper.toLowerCase();
+        } else if (tense === 'PRESENT') {
+          beText = is1sg ? 'am' : is3sg ? 'is' : 'are';
+        } else {
+          beText = is1sg || is3sg ? 'was' : 'were';
+        }
       }
+      blocks.push({
+        category: 'SIMPLE',
+        formula: tense === 'PAST' ? 'BE (V2)' : 'BE (V1)',
+        realization: beText,
+      });
     }
   }
 
   return blocks;
 }
+
 

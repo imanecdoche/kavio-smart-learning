@@ -856,13 +856,14 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
       useContraction,
       activeVerb,
       subjectType,
+      sentenceData,
     });
   }, [
     tense,
     aspect,
     sentenceType,
     form,
-    sentenceData.isPassive,
+    sentenceData,
     useContraction,
     activeVerb,
     subjectType,
