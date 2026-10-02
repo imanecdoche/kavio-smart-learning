@@ -4,7 +4,7 @@ import Button from '../ui/Button';
 import { useAuth } from '../../context/AuthContext';
 
 export const LoginPage = () => {
-  const { login, register, authError } = useAuth();
+  const { login, register, offlineLogin, authError } = useAuth();
   const [isRegister, setIsRegister] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -128,6 +128,26 @@ export const LoginPage = () => {
             </Button>
           </div>
         </form>
+
+        {/* Separator */}
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-zinc-700"></div>
+          </div>
+          <div className="relative flex justify-center text-xs">
+            <span className="px-2 bg-[#090a0f] text-zinc-500">or</span>
+          </div>
+        </div>
+
+        {/* Offline Button */}
+        <Button
+          type="button"
+          variant="outline"
+          onClick={offlineLogin}
+          className="w-full h-11 text-zinc-300 hover:text-white hover:bg-zinc-800/50 text-sm font-medium"
+        >
+          OFFLINE
+        </Button>
       </motion.div>
     </section>
   );
