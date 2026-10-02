@@ -2587,8 +2587,11 @@ export function getSentenceLogicBlocks({
   if (tense === 'FUTURE') {
     const modalTok =
       findToken('helper-modal') ||
+      tokens.find((t) => t.text?.toLowerCase() === 'will' || t.text?.toLowerCase() === "won't") ||
       findToken('helper-question') ||
-      findToken('helper-negative');
+      findToken('helper-negative-question') ||
+      findToken('helper-negative') ||
+      findToken('subject-contracted');
     const modalText = modalTok
       ? modalTok.text.toLowerCase()
       : useContraction && form === 'negative'
@@ -2596,25 +2599,37 @@ export function getSentenceLogicBlocks({
       : 'will';
 
     let nextWord = 'be';
+    let nextTok = null;
     if (aspect === 'SIMPLE') {
-      const verbTok = findToken('verb');
-      nextWord =
-        sentenceType === 'nominal'
-          ? 'be'
-          : isPassive
-          ? 'be'
-          : verbTok
-          ? verbTok.text.toLowerCase()
-          : activeVerb;
+      if (sentenceType === 'nominal' || isPassive) {
+        nextWord = 'be';
+        nextTok = tokens.find((t) => t.id === 'token-be');
+      } else {
+        const verbTok = findToken('verb');
+        nextWord = verbTok ? verbTok.text.toLowerCase() : activeVerb;
+        nextTok = verbTok;
+      }
     } else if (aspect === 'CONTINUOUS') {
       nextWord = 'be';
+      nextTok = tokens.find((t) => t.id === 'token-be');
     } else if (aspect === 'PERFECT' || aspect === 'PER.CONT') {
       nextWord = 'have';
+      nextTok =
+        findToken('helper-have') ||
+        tokens.find(
+          (t) =>
+            t.id === 'token-have' ||
+            (t.id === 'token-helper' && t.text?.toLowerCase() === 'have')
+        );
     }
+
+    const tokenIds = [modalTok?.id, nextTok?.id].filter(Boolean);
+
     blocks.push({
       category: 'FUTURE',
       formula: 'MODAL + BV',
       realization: `${modalText} ${nextWord}`,
+      tokenIds,
     });
   }
 
@@ -2622,7 +2637,13 @@ export function getSentenceLogicBlocks({
   if (aspect === 'PERFECT' || aspect === 'PER.CONT') {
     const haveTok =
       findToken('helper-have') ||
-      (form.includes('question') ? findToken('helper-question') : null) ||
+      tokens.find((t) =>
+        ['have', 'has', 'had', "haven't", "hasn't", "hadn't"].includes(
+          t.text?.toLowerCase()
+        )
+      ) ||
+      findToken('subject-contracted') ||
+      findToken('helper-question') ||
       findToken('helper-negative');
     let haveText = haveTok ? haveTok.text.toLowerCase() : null;
     if (!haveText) {
@@ -2642,98 +2663,143 @@ export function getSentenceLogicBlocks({
     }
 
     let v3Word = 'been';
+    let v3Tok = null;
     if (aspect === 'PERFECT' && sentenceType === 'verbal' && !isPassive) {
       const verbTok = findToken('verb');
       v3Word = verbTok ? verbTok.text.toLowerCase() : getPastParticipleVerb(activeVerb);
+      v3Tok = verbTok;
     } else {
       v3Word = 'been';
+      v3Tok = tokens.find((t) => t.id === 'token-be' && t.text === 'been');
     }
+
+    const tokenIds = [haveTok?.id, v3Tok?.id].filter(Boolean);
 
     blocks.push({
       category: 'PERFECT',
       formula: 'HAVE + V3',
       realization: `${haveText} ${v3Word}`,
+      tokenIds,
     });
   }
 
   // 3. CONTINUOUS (BE + V-ing)
   if (aspect === 'CONTINUOUS' || aspect === 'PER.CONT') {
     let beText = null;
+    let beTok = null;
     let vIngText = null;
+    let vIngTok = null;
 
     if (aspect === 'PER.CONT') {
       beText = 'been';
+      beTok = tokens.find((t) => t.id === 'token-be' && t.text === 'been');
       if (isPassive || sentenceType === 'nominal') {
         vIngText = 'being';
+        vIngTok = tokens.find((t) => t.id === 'token-being');
       } else {
         const verbTok = findToken('verb');
         vIngText = verbTok ? verbTok.text.toLowerCase() : getVerbIng(activeVerb);
+        vIngTok = verbTok;
       }
     } else {
-      const beTok =
-        findToken('helper-be') ||
-        findToken('helper-negative') ||
-        findToken('helper-question');
-      if (beTok) {
-        beText = beTok.text.toLowerCase();
+      if (tense === 'FUTURE') {
+        beText = 'be';
+        beTok = tokens.find((t) => t.id === 'token-be');
       } else {
-        const subjContr = findToken('subject-contracted');
-        if (subjContr && subjContr.contractedHelper) {
-          beText = subjContr.contractedHelper.toLowerCase();
-        } else if (tense === 'PRESENT') {
-          beText = is1sg ? 'am' : is3sg ? 'is' : 'are';
-        } else if (tense === 'PAST') {
-          beText = is1sg || is3sg ? 'was' : 'were';
+        beTok =
+          findToken('helper-be') ||
+          tokens.find((t) =>
+            ['am', 'is', 'are', 'was', 'were', "isn't", "aren't", "wasn't", "weren't"].includes(
+              t.text?.toLowerCase()
+            )
+          ) ||
+          findToken('helper-negative') ||
+          findToken('helper-question') ||
+          findToken('subject-contracted');
+        if (beTok) {
+          beText = beTok.text.toLowerCase();
         } else {
-          beText = 'be';
+          const subjContr = findToken('subject-contracted');
+          if (subjContr && subjContr.contractedHelper) {
+            beText = subjContr.contractedHelper.toLowerCase();
+          } else if (tense === 'PRESENT') {
+            beText = is1sg ? 'am' : is3sg ? 'is' : 'are';
+          } else if (tense === 'PAST') {
+            beText = is1sg || is3sg ? 'was' : 'were';
+          } else {
+            beText = 'be';
+          }
         }
       }
 
       if (isPassive || sentenceType === 'nominal') {
         vIngText = 'being';
+        vIngTok = tokens.find((t) => t.id === 'token-being');
       } else {
         const verbTok = findToken('verb');
         vIngText = verbTok ? verbTok.text.toLowerCase() : getVerbIng(activeVerb);
+        vIngTok = verbTok;
       }
     }
+
+    const tokenIds = [beTok?.id, vIngTok?.id].filter(Boolean);
 
     blocks.push({
       category: 'CONTINUOUS',
       formula: 'BE + V-ing',
       realization: `${beText} ${vIngText}`,
+      tokenIds,
     });
   }
 
   // 4. PASSIVE FORM (BE + V3)
   if (sentenceType === 'verbal' && isPassive) {
     let beText = 'be';
+    let beTok = null;
     const verbTok = findToken('verb');
     const v3Text = verbTok ? verbTok.text.toLowerCase() : getPastParticipleVerb(activeVerb);
 
     if (aspect === 'SIMPLE') {
-      const beTok =
-        findToken('helper-be') ||
-        findToken('helper-negative') ||
-        findToken('helper-question');
-      if (beTok) {
-        beText = beTok.text.toLowerCase();
-      } else if (tense === 'PRESENT') {
-        beText = is1sg ? 'am' : is3sg ? 'is' : 'are';
-      } else if (tense === 'PAST') {
-        beText = is1sg || is3sg ? 'was' : 'were';
+      if (tense === 'FUTURE') {
+        beText = 'be';
+        beTok = tokens.find((t) => t.id === 'token-be');
+      } else {
+        beTok =
+          findToken('helper-be') ||
+          tokens.find((t) =>
+            ['am', 'is', 'are', 'was', 'were', "isn't", "aren't", "wasn't", "weren't"].includes(
+              t.text?.toLowerCase()
+            )
+          ) ||
+          findToken('helper-negative') ||
+          findToken('helper-question') ||
+          findToken('subject-contracted');
+        if (beTok) {
+          beText = beTok.text.toLowerCase();
+        } else if (tense === 'PRESENT') {
+          beText = is1sg ? 'am' : is3sg ? 'is' : 'are';
+        } else if (tense === 'PAST') {
+          beText = is1sg || is3sg ? 'was' : 'were';
+        }
       }
     } else if (aspect === 'CONTINUOUS') {
       beText = 'being';
+      beTok = tokens.find((t) => t.id === 'token-being');
     } else if (aspect === 'PERFECT') {
       beText = 'been';
+      beTok = tokens.find((t) => t.id === 'token-be' && t.text === 'been');
     } else if (aspect === 'PER.CONT') {
       beText = 'being';
+      beTok = tokens.find((t) => t.id === 'token-being');
     }
+
+    const tokenIds = [beTok?.id, verbTok?.id].filter(Boolean);
 
     blocks.push({
       category: 'PASSIVE FORM',
       formula: 'BE + V3',
       realization: `${beText} ${v3Text}`,
+      tokenIds,
     });
   }
 
@@ -2742,7 +2808,14 @@ export function getSentenceLogicBlocks({
     if (sentenceType === 'verbal') {
       const verbTok = findToken('verb');
       const helperTok =
-        findToken('helper-negative') || findToken('helper-question');
+        findToken('helper-negative') ||
+        findToken('helper-question') ||
+        findToken('helper-negative-question') ||
+        tokens.find((t) =>
+          ['do', 'does', 'did', "don't", "doesn't", "didn't"].includes(
+            t.text?.toLowerCase()
+          )
+        );
       if (form === 'positive') {
         const word = verbTok
           ? verbTok.text.toLowerCase()
@@ -2755,6 +2828,7 @@ export function getSentenceLogicBlocks({
           category: 'SIMPLE',
           formula: tense === 'PAST' ? 'V2' : 'V1 / V-s',
           realization: word,
+          tokenIds: [verbTok?.id].filter(Boolean),
         });
       } else {
         const hText = helperTok
@@ -2765,10 +2839,14 @@ export function getSentenceLogicBlocks({
           ? 'does'
           : 'do';
         const vText = verbTok ? verbTok.text.toLowerCase() : activeVerb;
+        const notTok = tokens.find((t) => t.id === 'token-not');
+        const tokenIds = [helperTok?.id, notTok?.id, verbTok?.id].filter(Boolean);
+
         blocks.push({
           category: 'SIMPLE',
           formula: tense === 'PAST' ? 'DID + BV' : 'DO/DOES + BV',
           realization: `${hText} ${vText}`,
+          tokenIds,
         });
       }
     } else {
@@ -2776,7 +2854,9 @@ export function getSentenceLogicBlocks({
       const beTok =
         findToken('helper-be') ||
         findToken('helper-negative') ||
-        findToken('helper-question');
+        findToken('helper-question') ||
+        findToken('helper-negative-question') ||
+        findToken('subject-contracted');
       let beText = beTok ? beTok.text.toLowerCase() : null;
       if (!beText) {
         const subjContr = findToken('subject-contracted');
@@ -2792,6 +2872,7 @@ export function getSentenceLogicBlocks({
         category: 'SIMPLE',
         formula: tense === 'PAST' ? 'BE (V2)' : 'BE (V1)',
         realization: beText,
+        tokenIds: [beTok?.id].filter(Boolean),
       });
     }
   }

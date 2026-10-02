@@ -205,6 +205,8 @@ const SentenceTokenItem = ({
   activeTooltipTokenId,
   setActiveTooltipTokenId,
   activeVerb,
+  isHighlighted = false,
+  isDimmed = false,
 }) => {
   const isPunctuation = token.role === 'punctuation' || !token.tooltipTitle;
   const [isHovered, setIsHovered] = useState(false);
@@ -295,7 +297,13 @@ const SentenceTokenItem = ({
       onClick={handleClick}
     >
       <span
-        className={`whitespace-nowrap inline-flex items-baseline min-w-max ${tokenStyle} ${
+        className={`whitespace-nowrap inline-flex items-baseline min-w-max transition-all duration-200 ${
+          isHighlighted
+            ? 'text-emerald-400 font-bold drop-shadow-[0_0_8px_rgba(52,211,153,0.4)]'
+            : isDimmed
+            ? 'text-white/45 font-normal'
+            : tokenStyle
+        } ${
           isOpen ? 'opacity-100 underline decoration-amber-400/60 decoration-2 underline-offset-4' : ''
         }`}
         style={{ lineHeight: 1.35, verticalAlign: 'baseline' }}
@@ -372,7 +380,9 @@ const SentenceTokenItem = ({
 
         {punctuationMark && (
           <span
-            className="text-zinc-400 select-none pointer-events-none"
+            className={`${
+              isDimmed ? 'text-white/45' : 'text-zinc-400'
+            } select-none pointer-events-none transition-colors duration-200`}
             style={{ lineHeight: 1.35, verticalAlign: 'baseline' }}
           >
             {punctuationMark}
@@ -429,6 +439,7 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
   const [nominalSuggestions, setNominalSuggestions] = useState([]);
   const [showNominalSuggestions, setShowNominalSuggestions] = useState(false);
   const [openPicker, setOpenPicker] = useState(null); // 'timeSignal' | 'subject' | 'predicate' | 'object' | null
+  const [selectedBlockIndex, setSelectedBlockIndex] = useState(null);
   const pickerContainerRef = useRef(null);
 
   // Menerapkan konfigurasi preset dari modul pembelajaran (misal dari CTA Unit 3 Prepositions)
@@ -869,6 +880,29 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
     subjectType,
   ]);
 
+  // Auto-reset selected logic block card when sentence configuration changes
+  useEffect(() => {
+    setSelectedBlockIndex(null);
+  }, [
+    tense,
+    aspect,
+    sentenceType,
+    form,
+    sentenceData?.isPassive,
+    activeVerb,
+    activeComplement,
+    activeObject,
+    activeSubject,
+    useContraction,
+  ]);
+
+  const activeSelectedBlock =
+    selectedBlockIndex !== null ? sentenceLogicBlocks[selectedBlockIndex] : null;
+  const highlightedTokenIds = activeSelectedBlock?.tokenIds || [];
+  const hasActiveSelection = Boolean(
+    activeSelectedBlock && highlightedTokenIds.length > 0
+  );
+
   const handleReset = () => {
     setSentenceType('verbal');
     setIsPassive(false);
@@ -892,6 +926,7 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
     setNominalSuggestions([]);
     setShowNominalSuggestions(false);
     setOpenPicker(null);
+    setSelectedBlockIndex(null);
   };
 
   return (
@@ -980,6 +1015,10 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
 
                     const isLastWord = idx === wordTokens.length - 1;
                     const persistentLayoutId = getPersistentLayoutId(token);
+                    const isHighlighted =
+                      hasActiveSelection && highlightedTokenIds.includes(token.id);
+                    const isDimmed =
+                      hasActiveSelection && !highlightedTokenIds.includes(token.id);
 
                     return (
                       <SentenceTokenItem
@@ -991,6 +1030,8 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
                         activeTooltipTokenId={activeTooltipTokenId}
                         setActiveTooltipTokenId={setActiveTooltipTokenId}
                         activeVerb={activeVerb}
+                        isHighlighted={isHighlighted}
+                        isDimmed={isDimmed}
                       />
                     );
                   })}
@@ -1920,21 +1961,50 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
               {[0, 1, 2, 3].map((index) => {
                 const block = sentenceLogicBlocks[index];
                 if (block) {
+                  const isSelected = selectedBlockIndex === index;
                   return (
                     <motion.div
                       key={`${block.category}-${block.formula}-${index}`}
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ duration: 0.18 }}
-                      className="flex flex-col items-center justify-center text-center p-2.5 sm:p-3 rounded-xl bg-[#141724] border border-zinc-700/80 shadow-md min-h-[82px] sm:min-h-[90px]"
+                      role="button"
+                      tabIndex={0}
+                      aria-pressed={isSelected}
+                      onClick={() =>
+                        setSelectedBlockIndex((prev) => (prev === index ? null : index))
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setSelectedBlockIndex((prev) => (prev === index ? null : index));
+                        }
+                      }}
+                      className={`flex flex-col items-center justify-center text-center p-2.5 sm:p-3 rounded-xl min-h-[82px] sm:min-h-[90px] cursor-pointer transition-all duration-200 select-none ${
+                        isSelected
+                          ? 'ring-2 ring-emerald-500/90 bg-emerald-950/30 border border-emerald-500/80 shadow-lg shadow-emerald-950/40 scale-[1.02]'
+                          : 'bg-[#141724] border border-zinc-700/80 shadow-md hover:border-zinc-500/90 hover:bg-[#181c2c]'
+                      }`}
                     >
-                      <span className="text-[10px] sm:text-[11px] font-mono font-bold tracking-widest uppercase text-blue-400 mb-0.5">
+                      <span
+                        className={`text-[10px] sm:text-[11px] font-mono font-bold tracking-widest uppercase mb-0.5 transition-colors duration-200 ${
+                          isSelected ? 'text-emerald-400' : 'text-blue-400'
+                        }`}
+                      >
                         {block.category}
                       </span>
-                      <span className="text-sm sm:text-base font-mono font-extrabold text-white tracking-wide">
+                      <span
+                        className={`text-sm sm:text-base font-mono font-extrabold tracking-wide transition-colors duration-200 ${
+                          isSelected ? 'text-emerald-200' : 'text-white'
+                        }`}
+                      >
                         {block.formula}
                       </span>
-                      <span className="text-xs sm:text-sm font-mono text-zinc-400 italic mt-0.5 truncate max-w-full px-1">
+                      <span
+                        className={`text-xs sm:text-sm font-mono italic mt-0.5 truncate max-w-full px-1 transition-colors duration-200 ${
+                          isSelected ? 'text-emerald-300/80' : 'text-zinc-400'
+                        }`}
+                      >
                         &ldquo;{block.realization}&rdquo;
                       </span>
                     </motion.div>
