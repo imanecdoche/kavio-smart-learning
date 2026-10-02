@@ -470,6 +470,10 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
       setSentenceType(newType);
       if (newType !== 'verbal') {
         setIsPassive(false);
+        // Kalimat nominal tidak memiliki aspek Perfect Continuous
+        if (aspect === 'PER.CONT') {
+          setAspect('PERFECT');
+        }
       }
       setTimeSignal('none');
       setCustomTimeSignalInput('');
@@ -492,6 +496,9 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
 
   // Switch time signal default when aspect changes (preserve 'none' if chosen)
   const handleAspectChange = (newAspect) => {
+    if (sentenceType === 'nominal' && newAspect === 'PER.CONT') {
+      return;
+    }
     setAspect(newAspect);
     setCustomTimeSignalInput('');
     if (timeSignal === 'none') {
@@ -563,6 +570,13 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
       setIsPassive(false);
     }
   }, [sentenceType, isCurrentVerbTransitive, isPassive]);
+
+  // Auto-fallback jika mode nominal tapi aspek PER.CONT
+  useEffect(() => {
+    if (sentenceType === 'nominal' && aspect === 'PER.CONT') {
+      setAspect('PERFECT');
+    }
+  }, [sentenceType, aspect]);
 
   const sentenceData = useMemo(() => {
     return buildSentence({
@@ -1245,26 +1259,37 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
                   { id: 'CONTINUOUS', label: 'CONT.' },
                   { id: 'PERFECT', label: 'PERFECT' },
                   { id: 'PER.CONT', label: 'PER.CONT' },
-                ].map((a) => (
-                  <button
-                    key={a.id}
-                    type="button"
-                    onClick={() => handleAspectChange(a.id)}
-                    className={`h-7 rounded-md text-[10px] sm:text-[11px] font-mono font-bold transition-all border-0 cursor-pointer ${
-                      aspect === a.id
-                        ? a.id === 'SIMPLE'
-                          ? 'bg-blue-600 text-white shadow'
-                          : a.id === 'CONTINUOUS'
-                          ? 'bg-cyan-600 text-white shadow'
-                          : a.id === 'PERFECT'
-                          ? 'bg-indigo-600 text-white shadow'
-                          : 'bg-teal-600 text-white shadow'
-                        : 'bg-transparent text-zinc-400 hover:text-white'
-                    }`}
-                  >
-                    {a.label}
-                  </button>
-                ))}
+                ].map((a) => {
+                  const isNominalDisabled = sentenceType === 'nominal' && a.id === 'PER.CONT';
+                  return (
+                    <button
+                      key={a.id}
+                      type="button"
+                      disabled={isNominalDisabled}
+                      onClick={() => !isNominalDisabled && handleAspectChange(a.id)}
+                      title={
+                        isNominalDisabled
+                          ? 'Kalimat nominal tidak menggunakan aspek Perfect Continuous'
+                          : undefined
+                      }
+                      className={`h-7 rounded-md text-[10px] sm:text-[11px] font-mono font-bold transition-all border-0 ${
+                        isNominalDisabled
+                          ? 'opacity-30 cursor-not-allowed text-zinc-600 bg-transparent'
+                          : aspect === a.id
+                          ? a.id === 'SIMPLE'
+                            ? 'bg-blue-600 text-white shadow cursor-pointer'
+                            : a.id === 'CONTINUOUS'
+                            ? 'bg-cyan-600 text-white shadow cursor-pointer'
+                            : a.id === 'PERFECT'
+                            ? 'bg-indigo-600 text-white shadow cursor-pointer'
+                            : 'bg-teal-600 text-white shadow cursor-pointer'
+                          : 'bg-transparent text-zinc-400 hover:text-white cursor-pointer'
+                      }`}
+                    >
+                      {a.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
