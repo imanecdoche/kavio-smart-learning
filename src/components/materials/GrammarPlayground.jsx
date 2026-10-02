@@ -12,6 +12,7 @@ import {
   NOMINAL_PRESETS,
   OBJECT_PRESETS,
   getTenseFormulaInfo,
+  getSentenceLogicBlocks,
 } from '../../utils/grammarEngine.js';
 import { lookupVerb, getVerbSuggestions } from '../../data/dictionary/verbsData';
 import { lookupNominal, getNominalSuggestions } from '../../data/dictionary/nominalData';
@@ -406,21 +407,21 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
   const [activeTooltipTokenId, setActiveTooltipTokenId] = useState(null); // Single active tooltip ID
   const [sentenceType, setSentenceType] = useState('verbal'); // 'verbal' | 'nominal'
   const [isPassive, setIsPassive] = useState(false); // Toggle Passive Voice (Khusus Verbal)
-  const [showTranslation, setShowTranslation] = useState(true); // Toggle Terjemahan Bahasa Indonesia Dinamis
+  const [showTranslation, setShowTranslation] = useState(false); // Toggle Terjemahan Bahasa Indonesia Dinamis (Default: OFF)
   const [aspect, setAspect] = useState('SIMPLE'); // 'SIMPLE' | 'CONTINUOUS' | 'PERFECT' | 'PER.CONT'
   const [nominalComplement, setNominalComplement] = useState('happy');
   const [customComplementInput, setCustomComplementInput] = useState('');
 
   const [tense, setTense] = useState('PRESENT'); // 'PRESENT' | 'PAST' | 'FUTURE'
   const [form, setForm] = useState('positive'); // 'positive' | 'negative' | 'question' | 'negative_question'
-  const [useContraction, setUseContraction] = useState(true); // Toggle singkatan: don't, doesn't, didn't, won't, isn't, aren't
+  const [useContraction, setUseContraction] = useState(false); // Toggle singkatan (Default: OFF)
   const [subject, setSubject] = useState('Sarah');
   const [customSubjectInput, setCustomSubjectInput] = useState('');
   const [object, setObject] = useState('none'); // Default: Tanpa Objek
   const [customObjectInput, setCustomObjectInput] = useState('');
   const [verb, setVerb] = useState('study');
   const [customVerbInput, setCustomVerbInput] = useState('');
-  const [timeSignal, setTimeSignal] = useState('every day');
+  const [timeSignal, setTimeSignal] = useState('none'); // Default: (Tanpa)
   const [customTimeSignalInput, setCustomTimeSignalInput] = useState('');
 
   const [verbSuggestions, setVerbSuggestions] = useState([]);
@@ -845,14 +846,36 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
     });
   }, [tense, aspect, sentenceType, form, sentenceData.isPassive]);
 
+  const sentenceLogicBlocks = useMemo(() => {
+    return getSentenceLogicBlocks({
+      tense,
+      aspect,
+      sentenceType,
+      form,
+      isPassive: sentenceData.isPassive,
+      useContraction,
+      activeVerb,
+      subjectType,
+    });
+  }, [
+    tense,
+    aspect,
+    sentenceType,
+    form,
+    sentenceData.isPassive,
+    useContraction,
+    activeVerb,
+    subjectType,
+  ]);
+
   const handleReset = () => {
     setSentenceType('verbal');
     setIsPassive(false);
-    setShowTranslation(true);
+    setShowTranslation(false);
     setAspect('SIMPLE');
     setTense('PRESENT');
     setForm('positive');
-    setUseContraction(true);
+    setUseContraction(false);
     setSubject('Sarah');
     setCustomSubjectInput('');
     setObject('none');
@@ -861,7 +884,7 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
     setCustomVerbInput('');
     setNominalComplement('happy');
     setCustomComplementInput('');
-    setTimeSignal('every day');
+    setTimeSignal('none');
     setCustomTimeSignalInput('');
     setVerbSuggestions([]);
     setShowVerbSuggestions(false);
@@ -1887,19 +1910,40 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
           </div>
 
           {/* ========================================================================= */}
-          {/* TENSE IDENTITY (CENTERED, PURE TYPOGRAPHY, NO CONTAINER BOX)              */}
+          {/* TENSE IDENTITY & KAVIO LOGIC BLOCKS (CENTERED, STACKED VERTICALLY)        */}
           {/* ========================================================================= */}
-          <motion.div
-            key={`${tense}-${aspect}-${sentenceType}-${form}`}
-            initial={{ opacity: 0, y: 3 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.18 }}
-            className="w-full text-center py-1 shrink-0"
-          >
-            <span className="text-xs sm:text-sm font-semibold text-zinc-300 tracking-wide">
-              {tenseFormulaInfo.name}
-            </span>
-          </motion.div>
+          <div className="w-full flex flex-col items-center justify-center text-center py-2 shrink-0 space-y-4">
+            <motion.div
+              key={`${tense}-${aspect}-${sentenceType}-${form}-${sentenceData.isPassive}`}
+              initial={{ opacity: 0, y: 3 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.18 }}
+            >
+              <span className="text-xs sm:text-sm font-semibold text-zinc-300 tracking-wide">
+                {tenseFormulaInfo.name}
+              </span>
+            </motion.div>
+
+            {/* Vertically Stacked Kavio Domino Logic Blocks */}
+            <div className="flex flex-col items-center justify-center gap-3 sm:gap-4">
+              {sentenceLogicBlocks.map((block, idx) => (
+                <div
+                  key={`${block.category}-${block.formula}-${idx}`}
+                  className="flex flex-col items-center text-center"
+                >
+                  <span className="text-[10px] sm:text-[11px] font-mono font-bold tracking-widest uppercase text-blue-400/90 mb-0.5">
+                    {block.category}
+                  </span>
+                  <span className="text-base sm:text-lg font-mono font-extrabold text-white tracking-wide">
+                    {block.formula}
+                  </span>
+                  <span className="text-xs sm:text-sm font-mono text-zinc-400 italic mt-0.5">
+                    &ldquo;{block.realization}&rdquo;
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </main>
 

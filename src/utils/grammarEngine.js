@@ -2551,3 +2551,215 @@ export function getTenseFormulaInfo({ tense, aspect, sentenceType, form, isPassi
     fullFormula: `${formPrefix} ${rawFormula}`,
   };
 }
+
+/**
+ * Menghasilkan daftar balok logika Domino Kavio (Kavio Domino Blocks) untuk kalimat saat ini.
+ * Setiap balok terdiri atas:
+ * - category: Label kategori balok ("FUTURE", "PERFECT", "CONTINUOUS", "PASSIVE FORM", "SIMPLE")
+ * - formula: Rumus balok kata kerja ("MODAL + BV", "HAVE + V3", "BE + V-ing", "BE + V3", "V1 / V-s", "V2", "DO/DOES + BV", "DID + BV", "BE (V1)", "BE (V2)")
+ * - realization: Realisasi kata/frasa nyata dari kalimat di atas yang membentuk balok tersebut.
+ */
+export function getSentenceLogicBlocks({
+  tense,
+  aspect,
+  sentenceType,
+  form,
+  isPassive = false,
+  useContraction = false,
+  activeVerb = 'work',
+  subjectType = 'third_singular',
+}) {
+  const blocks = [];
+
+  // 1. FUTURE (MODAL + BV)
+  if (tense === 'FUTURE') {
+    let modalWord = useContraction && form === 'negative' ? "won't" : (form === 'negative' ? 'will not' : 'will');
+    let nextWord = 'BV';
+    if (aspect === 'SIMPLE') {
+      nextWord = sentenceType === 'nominal' ? 'be' : (isPassive ? 'be' : activeVerb);
+    } else if (aspect === 'CONTINUOUS') {
+      nextWord = 'be';
+    } else if (aspect === 'PERFECT' || aspect === 'PER.CONT') {
+      nextWord = 'have';
+    }
+    blocks.push({
+      category: 'FUTURE',
+      formula: 'MODAL + BV',
+      realization: `${modalWord} ${nextWord}`,
+    });
+  }
+
+  // 2. PERFECT (HAVE + V3)
+  if (aspect === 'PERFECT' || aspect === 'PER.CONT') {
+    let haveWord = 'have';
+    if (tense === 'PAST') {
+      haveWord = useContraction && form === 'negative' ? "hadn't" : 'had';
+    } else if (tense === 'PRESENT') {
+      const is3sg = subjectType === 'third_singular';
+      haveWord = is3sg
+        ? (useContraction && form === 'negative' ? "hasn't" : 'has')
+        : (useContraction && form === 'negative' ? "haven't" : 'have');
+    } else {
+      haveWord = 'have';
+    }
+
+    let nextV3 = 'been';
+    if (aspect === 'PERFECT') {
+      if (sentenceType === 'verbal' && !isPassive) {
+        nextV3 = getPastParticipleVerb(activeVerb);
+      } else {
+        nextV3 = 'been';
+      }
+    } else {
+      nextV3 = 'been';
+    }
+
+    blocks.push({
+      category: 'PERFECT',
+      formula: 'HAVE + V3',
+      realization: `${haveWord} ${nextV3}`,
+    });
+  }
+
+  // 3. CONTINUOUS (BE + V-ing)
+  if (aspect === 'CONTINUOUS' || aspect === 'PER.CONT') {
+    let beWord = 'be';
+    let vIngWord = getVerbIng(activeVerb);
+
+    if (aspect === 'PER.CONT') {
+      beWord = 'been';
+      if (isPassive || sentenceType === 'nominal') {
+        vIngWord = 'being';
+      }
+    } else {
+      if (tense === 'PRESENT') {
+        const is1sg = subjectType === 'first_singular';
+        const is3sg = subjectType === 'third_singular';
+        beWord = is1sg ? 'am' : is3sg ? 'is' : 'are';
+        if (useContraction && form === 'negative') {
+          beWord = is1sg ? 'am not' : is3sg ? "isn't" : "aren't";
+        }
+      } else if (tense === 'PAST') {
+        const isSing = subjectType === 'first_singular' || subjectType === 'third_singular';
+        beWord = isSing ? 'was' : 'were';
+        if (useContraction && form === 'negative') {
+          beWord = isSing ? "wasn't" : "weren't";
+        }
+      } else {
+        beWord = 'be';
+      }
+
+      if (isPassive || sentenceType === 'nominal') {
+        vIngWord = 'being';
+      }
+    }
+
+    blocks.push({
+      category: 'CONTINUOUS',
+      formula: 'BE + V-ing',
+      realization: `${beWord} ${vIngWord}`,
+    });
+  }
+
+  // 4. PASSIVE FORM (BE + V3)
+  if (sentenceType === 'verbal' && isPassive) {
+    let beWord = 'be';
+    const v3Word = getPastParticipleVerb(activeVerb);
+
+    if (aspect === 'SIMPLE') {
+      if (tense === 'PRESENT') {
+        const is1sg = subjectType === 'first_singular';
+        const is3sg = subjectType === 'third_singular';
+        beWord = is1sg ? 'am' : is3sg ? 'is' : 'are';
+        if (useContraction && form === 'negative') {
+          beWord = is1sg ? 'am not' : is3sg ? "isn't" : "aren't";
+        }
+      } else if (tense === 'PAST') {
+        const isSing = subjectType === 'first_singular' || subjectType === 'third_singular';
+        beWord = isSing ? 'was' : 'were';
+        if (useContraction && form === 'negative') {
+          beWord = isSing ? "wasn't" : "weren't";
+        }
+      } else {
+        beWord = 'be';
+      }
+    } else if (aspect === 'CONTINUOUS') {
+      beWord = 'being';
+    } else if (aspect === 'PERFECT') {
+      beWord = 'been';
+    } else if (aspect === 'PER.CONT') {
+      beWord = 'being';
+    }
+
+    blocks.push({
+      category: 'PASSIVE FORM',
+      formula: 'BE + V3',
+      realization: `${beWord} ${v3Word}`,
+    });
+  }
+
+  // 5. SIMPLE
+  if (aspect === 'SIMPLE' && tense !== 'FUTURE' && !isPassive) {
+    if (sentenceType === 'verbal') {
+      if (tense === 'PRESENT') {
+        if (form === 'positive') {
+          const is3sg = subjectType === 'third_singular';
+          const formVerb = is3sg ? getPresentThirdPersonVerb(activeVerb) : activeVerb;
+          blocks.push({
+            category: 'SIMPLE',
+            formula: 'V1 / V-s',
+            realization: formVerb,
+          });
+        } else {
+          const is3sg = subjectType === 'third_singular';
+          const doWord = is3sg
+            ? useContraction ? "doesn't" : 'does not'
+            : useContraction ? "don't" : 'do not';
+          blocks.push({
+            category: 'SIMPLE',
+            formula: 'DO/DOES + BV',
+            realization: `${doWord} ${activeVerb}`,
+          });
+        }
+      } else if (tense === 'PAST') {
+        if (form === 'positive') {
+          blocks.push({
+            category: 'SIMPLE',
+            formula: 'V2',
+            realization: getPastVerb(activeVerb),
+          });
+        } else {
+          const didWord = useContraction ? "didn't" : 'did not';
+          blocks.push({
+            category: 'SIMPLE',
+            formula: 'DID + BV',
+            realization: `${didWord} ${activeVerb}`,
+          });
+        }
+      }
+    } else {
+      // Nominal Simple
+      if (tense === 'PRESENT') {
+        const is1sg = subjectType === 'first_singular';
+        const is3sg = subjectType === 'third_singular';
+        const beWord = is1sg ? 'am' : is3sg ? 'is' : 'are';
+        blocks.push({
+          category: 'SIMPLE',
+          formula: 'BE (V1)',
+          realization: beWord,
+        });
+      } else if (tense === 'PAST') {
+        const isSing = subjectType === 'first_singular' || subjectType === 'third_singular';
+        const beWord = isSing ? 'was' : 'were';
+        blocks.push({
+          category: 'SIMPLE',
+          formula: 'BE (V2)',
+          realization: beWord,
+        });
+      }
+    }
+  }
+
+  return blocks;
+}
+
