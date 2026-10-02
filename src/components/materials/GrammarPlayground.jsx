@@ -1887,31 +1887,18 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
           </div>
 
           {/* ========================================================================= */}
-          {/* DYNAMIC TENSES & FORMULA STRIP (COMPACT / 100VH COMPLIANT)               */}
+          {/* TENSE IDENTITY (CENTERED, PURE TYPOGRAPHY, NO CONTAINER BOX)              */}
           {/* ========================================================================= */}
           <motion.div
             key={`${tense}-${aspect}-${sentenceType}-${form}`}
             initial={{ opacity: 0, y: 3 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.18 }}
-            className="w-full bg-[#11131c] rounded-xl px-4 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-3 shrink-0 text-left shadow-lg"
+            className="w-full text-center py-1 shrink-0"
           >
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse shrink-0" />
-              <span className="text-[11px] sm:text-xs text-zinc-400 font-medium">Tenses Kalimat:</span>
-              <span className="text-xs sm:text-sm font-bold text-white tracking-wide">
-                {tenseFormulaInfo.name}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2 font-mono text-[11px] sm:text-xs overflow-x-auto no-scrollbar">
-              <span className="text-blue-400 font-bold shrink-0">
-                {tenseFormulaInfo.formulaPrefix}
-              </span>
-              <span className="text-zinc-200 font-medium whitespace-nowrap">
-                {tenseFormulaInfo.formula}
-              </span>
-            </div>
+            <span className="text-xs sm:text-sm font-semibold text-zinc-300 tracking-wide">
+              {tenseFormulaInfo.name}
+            </span>
           </motion.div>
         </div>
       </main>
