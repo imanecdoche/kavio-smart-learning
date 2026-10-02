@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { motion, LayoutGroup, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import {
   buildSentence,
@@ -16,74 +16,16 @@ import {
 import { lookupVerb, getVerbSuggestions } from '../../data/dictionary/verbsData';
 import { lookupNominal, getNominalSuggestions } from '../../data/dictionary/nominalData';
 
-const tokenTransition = {
-  layout: { type: 'spring', stiffness: 350, damping: 32 },
-};
-
-const rollVariants = {
-  initial: { y: '100%', opacity: 0 },
-  animate: (custom = 0) => {
-    const delay = typeof custom === 'number' ? custom : custom?.delay || 0;
-    return {
-      y: '0%',
-      opacity: 1,
-      transition: {
-        y: { type: 'spring', stiffness: 400, damping: 35, delay },
-        opacity: { duration: 0.12, delay },
-      },
-    };
-  },
-  exit: (custom = 0) => {
-    const delay = typeof custom === 'number' ? custom : custom?.delay || 0;
-    return {
-      y: '-100%',
-      opacity: 0,
-      transition: {
-        y: { type: 'spring', stiffness: 400, damping: 35, delay },
-        opacity: { duration: 0.12, delay },
-      },
-    };
-  },
-};
-
-const tokenVariants = {
-  initial: {
-    opacity: 0,
-    width: 0,
-    marginLeft: 0,
-    marginRight: 0,
-  },
-  animate: (custom) => ({
-    opacity: 1,
-    width: 'auto',
-    marginLeft: '0.25rem',
-    marginRight: '0.25rem',
-    transition: {
-      width: { type: 'spring', stiffness: 400, damping: 35, delay: custom?.delay || 0 },
-      marginLeft: { type: 'spring', stiffness: 400, damping: 35, delay: custom?.delay || 0 },
-      marginRight: { type: 'spring', stiffness: 400, damping: 35, delay: custom?.delay || 0 },
-      opacity: { duration: 0.15, delay: custom?.delay || 0 },
-    },
-  }),
-  exit: {
-    opacity: 0,
-    width: 0,
-    marginLeft: 0,
-    marginRight: 0,
-    transition: {
-      width: { type: 'spring', stiffness: 400, damping: 35 },
-      marginLeft: { type: 'spring', stiffness: 400, damping: 35 },
-      marginRight: { type: 'spring', stiffness: 400, damping: 35 },
-      opacity: { duration: 0.12 },
-    },
-  },
+const tokenMotionTransition = {
+  duration: 0.4,
+  ease: [0.85, 0, 0.15, 1],
 };
 
 /**
  * Identitas persistent unik untuk layout motion (FLIP sliding)
  * Menjamin tidak terjadi unmount/blink saat transisi (+) -> (?)
  */
-export function getPersistentLayoutId(token) {
+function getPersistentLayoutId(token) {
   if (!token) return 'token-unknown';
   if (token.id === 'token-subj' || token.role === 'subject' || token.role === 'subject-contracted') {
     return 'token-subject';
@@ -262,7 +204,6 @@ const SentenceTokenItem = ({
   activeTooltipTokenId,
   setActiveTooltipTokenId,
   activeVerb,
-  staggerDelay = 0,
 }) => {
   const isPunctuation = token.role === 'punctuation' || !token.tooltipTitle;
   const [isHovered, setIsHovered] = useState(false);
@@ -332,25 +273,18 @@ const SentenceTokenItem = ({
   return (
     <motion.div
       layout="position"
-      layoutId={persistentLayoutId}
-      custom={{ delay: staggerDelay }}
-      initial="initial"
-      animate="animate"
-      exit="exit"
-      variants={tokenVariants}
-      transition={tokenTransition}
+      initial={{ opacity: 0, width: 0 }}
+      animate={{ opacity: 1, width: 'auto' }}
+      exit={{ opacity: 0, width: 0 }}
+      transition={tokenMotionTransition}
       className={`relative inline-flex items-baseline select-none ${
         isOpen ? 'z-30 overflow-visible' : 'z-20 overflow-hidden'
-      } cursor-pointer`}
+      } cursor-pointer mx-1 sm:mx-1.5 py-1 -my-1`}
       style={{
         WebkitTouchCallout: 'none',
         userSelect: 'none',
         lineHeight: 1.35,
         verticalAlign: 'baseline',
-        paddingTop: '0.25em',
-        paddingBottom: '0.45em',
-        marginTop: '-0.25em',
-        marginBottom: '-0.45em',
       }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
@@ -366,94 +300,73 @@ const SentenceTokenItem = ({
         style={{ lineHeight: 1.35, verticalAlign: 'baseline' }}
       >
         {hasStem ? (
-          /* Letter-Level Morphing: Invariant Stem Locked in Place + Suffix Rolling */
+          /* Letter-Level Morphing: Invariant Stem Locked in Place + Suffix In-Place Replacement */
           <span
-            className="inline-flex items-baseline"
-            style={{ display: 'inline-flex', alignItems: 'baseline', lineHeight: 1.35, verticalAlign: 'baseline' }}
+            className="inline-flex items-baseline whitespace-nowrap"
+            style={{ lineHeight: 1.35, verticalAlign: 'baseline' }}
           >
-            {/* 1. Stem (akar kata) terkunci mati: zero transform, zero reflow */}
+            {/* 1. Stem (akar kata) terkunci mati: zero transform, zero scale, zero reflow */}
             <span
-              className="inline-block select-none"
-              style={{ display: 'inline-block', lineHeight: 1.35, verticalAlign: 'baseline' }}
-            >{stem}</span>{/* 2. Suffix (akhiran) melakukan vertical rolling */}<motion.span
-              layout="position"
-              transition={{
-                layout: { type: 'spring', stiffness: 400, damping: 35, delay: staggerDelay },
-              }}
-              className="inline-block overflow-hidden relative"
-              style={{
-                display: 'inline-block',
-                verticalAlign: 'baseline',
-                lineHeight: 1.35,
-                position: 'relative',
-                overflow: 'hidden',
-                paddingTop: '0.25em',
-                paddingBottom: '0.45em',
-                marginTop: '-0.25em',
-                marginBottom: '-0.45em',
-              }}
+              className="inline-block select-none min-w-max"
+              style={{ lineHeight: 1.35, verticalAlign: 'baseline' }}
             >
-              <AnimatePresence mode="popLayout" initial={false} custom={staggerDelay}>
+              {stem}
+            </span>
+
+            {/* 2. Suffix Curtain (Tirai Lebar): Melebar & menguncup secara optik di tempat yang tepat */}
+            <AnimatePresence initial={false}>
+              {suffix ? (
                 <motion.span
-                  key={suffix ? suffix.toLowerCase() : '__empty__'}
-                  custom={staggerDelay}
-                  variants={rollVariants}
-                  initial="initial"
-                  animate="animate"
-                  exit="exit"
-                  className="inline-block"
-                  style={{
-                    display: 'inline-block',
-                    lineHeight: 1.35,
-                    verticalAlign: 'baseline',
-                    whiteSpace: 'nowrap',
-                  }}
+                  key="suffix-curtain"
+                  initial={{ width: 0, opacity: 0 }}
+                  animate={{ width: 'auto', opacity: 1 }}
+                  exit={{ width: 0, opacity: 0 }}
+                  transition={{ duration: 0.35, ease: [0.85, 0, 0.15, 1] }}
+                  className="inline-flex overflow-hidden whitespace-nowrap py-1 -my-1"
+                  style={{ lineHeight: 1.35, verticalAlign: 'baseline' }}
                 >
-                  {suffix}
+                  <div
+                    className="inline-flex overflow-hidden relative h-[1.4em] items-baseline min-w-max pb-1 -mb-1"
+                    style={{ lineHeight: 1.35, verticalAlign: 'baseline' }}
+                  >
+                    <AnimatePresence mode="popLayout" initial={false}>
+                      <motion.span
+                        key={suffix}
+                        initial={{ y: '80%', opacity: 0 }}
+                        animate={{ y: '0%', opacity: 1 }}
+                        exit={{ y: '-80%', opacity: 0 }}
+                        transition={{ duration: 0.3, ease: [0.85, 0, 0.15, 1] }}
+                        className="inline-block min-w-max select-none"
+                        style={{ lineHeight: 1.35, verticalAlign: 'baseline' }}
+                      >
+                        {suffix}
+                      </motion.span>
+                    </AnimatePresence>
+                  </div>
                 </motion.span>
-              </AnimatePresence>
-            </motion.span>
+              ) : null}
+            </AnimatePresence>
           </span>
         ) : (
           /* Whole Token Vertical Rolling (Slot Machine / Odometer) */
-          <motion.span
-            layout="position"
-            transition={{
-              layout: { type: 'spring', stiffness: 400, damping: 35, delay: staggerDelay },
-            }}
-            className="inline-block overflow-hidden relative"
-            style={{
-              display: 'inline-block',
-              verticalAlign: 'baseline',
-              lineHeight: 1.35,
-              position: 'relative',
-              overflow: 'hidden',
-              paddingTop: '0.25em',
-              paddingBottom: '0.45em',
-              marginTop: '-0.25em',
-              marginBottom: '-0.45em',
-            }}
+          <div
+            className="inline-flex overflow-hidden relative h-[1.4em] items-baseline min-w-max pb-1 -mb-1"
+            style={{ lineHeight: 1.35, verticalAlign: 'baseline' }}
           >
-            <AnimatePresence mode="popLayout" initial={false} custom={staggerDelay}>
+            <AnimatePresence mode="popLayout" initial={false}>
               <motion.span
-                key={token.text.toLowerCase()}
-                custom={staggerDelay}
-                variants={rollVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                className="inline-block"
-                style={{
-                  display: 'inline-block',
-                  lineHeight: 1.35,
-                  verticalAlign: 'baseline',
-                  whiteSpace: 'nowrap',
-                }}
+                key={token.text}
+                initial={{ y: '100%', opacity: 0 }}
+                animate={{ y: '0%', opacity: 1 }}
+                exit={{ y: '-100%', opacity: 0 }}
+                transition={{ duration: 0.35, ease: [0.85, 0, 0.15, 1] }}
+                className="inline-block min-w-max select-none"
+                style={{ lineHeight: 1.35, verticalAlign: 'baseline' }}
               >
                 {token.text}
               </motion.span>
             </AnimatePresence>
-          </motion.span>
+          </div>
         )}
 
         {punctuationMark && (
@@ -675,46 +588,6 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
     return punct ? punct.text : '.';
   }, [sentenceData?.tokens]);
 
-  // Ref penyimpan snapshot token sebelumnya untuk deteksi perubahan kata
-  const prevTokensMapRef = useRef(new Map());
-
-  // Perhitungan Stagger Delay (kiri ke kanan: 0ms, 120ms, 240ms...) untuk token yang mengalami perubahan nilai
-  const tokenDelaysMap = useMemo(() => {
-    const delays = {};
-    const prevMap = prevTokensMapRef.current;
-
-    // Pada render inisial / pertama, jangan berikan delay agar tidak ada glitch
-    if (!prevMap || prevMap.size === 0) {
-      return delays;
-    }
-
-    let changedCount = 0;
-    for (const token of wordTokens) {
-      const pId = getPersistentLayoutId(token);
-      const prevText = prevMap.get(pId);
-      const currText = token.text.toLowerCase();
-
-      // Cek apakah ada perubahan kosakata (abaikan perbedaan kapitalisasi seperti 'is' -> 'Is')
-      if (prevText === undefined || prevText !== currText) {
-        delays[pId] = changedCount * 0.12;
-        changedCount++;
-      } else {
-        delays[pId] = 0;
-      }
-    }
-
-    return delays;
-  }, [wordTokens]);
-
-  // Sinkronisasi snapshot token sebelumnya setelah render selesai
-  useEffect(() => {
-    const map = new Map();
-    for (const token of wordTokens) {
-      const pId = getPersistentLayoutId(token);
-      map.set(pId, token.text.toLowerCase());
-    }
-    prevTokensMapRef.current = map;
-  }, [wordTokens]);
 
   // Tutup tooltip saat klik atau tap di luar kata
   useEffect(() => {
@@ -1037,11 +910,7 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
           {/* ========================================================================= */}
           {/* TOP SECTION: ENGINE STRIP, SENTENCE PREVIEW & MINIMALIST ICONS            */}
           {/* ========================================================================= */}
-          <motion.div
-            layout="position"
-            transition={{ layout: { duration: 0.75, ease: [0.16, 1, 0.3, 1] } }}
-            className="w-full flex flex-col items-center shrink-0 space-y-2.5"
-          >
+          <div className="w-full flex flex-col items-center shrink-0 space-y-2.5">
             {/* 1. Grammar Engine Explanation Strip - Posisi Paling Atas */}
             <div className="w-full bg-[#141622] rounded-xl px-3.5 py-1.5 text-[11px] sm:text-xs text-zinc-300 flex items-center gap-2 text-left relative z-0">
               <span className="w-3.5 h-3.5 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-[9px] shrink-0 border-0">
@@ -1053,74 +922,66 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
             </div>
 
             {/* 2. Main Sentence Preview Canvas (Pure Floating Canvas, Center-Aligned, No Box/Card) */}
-            <motion.div
-              layout="position"
-              transition={{ layout: { duration: 0.75, ease: [0.16, 1, 0.3, 1] } }}
-              className="w-full py-2.5 sm:py-3.5 flex flex-col items-center justify-center relative z-20 overflow-visible min-h-[4rem] sm:min-h-[4.5rem]"
-            >
-              <LayoutGroup id="sentence-preview-stage">
-                <motion.div
-                  layout="position"
-                  layoutRoot
-                  className="inline-flex items-baseline justify-center flex-wrap gap-y-2 min-h-[3.5rem] sm:min-h-[4rem] text-2xl sm:text-3xl md:text-4xl font-mono font-bold text-center relative z-10"
-                  style={{ position: 'relative', isolation: 'isolate' }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-                >
-                  <AnimatePresence initial={false}>
-                    {wordTokens.map((token, idx) => {
-                      let tokenStyle = 'text-white';
-                      if (token.role === 'invalid') {
-                        tokenStyle = 'text-rose-400 font-bold italic tracking-wide';
-                      } else if (token.role === 'subject-contracted') {
-                        tokenStyle = 'text-sky-300 font-bold';
-                      } else if (token.role === 'verb') {
-                        tokenStyle = token.isIng
-                          ? 'text-cyan-400 font-bold'
-                          : token.isV3
-                          ? 'text-emerald-300 font-bold'
-                          : 'text-emerald-400 font-bold';
-                      } else if (token.role === 'complement') {
-                        tokenStyle = 'text-purple-400 font-bold';
-                      } else if (token.role === 'object') {
-                        tokenStyle = 'text-amber-300 font-semibold';
-                      } else if (token.role === 'agent') {
-                        tokenStyle = 'text-zinc-400 font-normal italic';
-                      } else if (token.role === 'helper-have') {
-                        tokenStyle = 'text-indigo-400 font-bold';
-                      } else if (token.role === 'helper-be') {
-                        tokenStyle = 'text-blue-400 font-bold';
-                      } else if (token.role === 'helper-negative') {
-                        tokenStyle = 'text-red-400 font-bold';
-                      } else if (token.role === 'helper-question') {
-                        tokenStyle = 'text-amber-400 font-bold';
-                      } else if (token.role === 'helper-negative-question') {
-                        tokenStyle = 'text-rose-400 font-bold';
-                      } else if (token.role === 'helper-modal') {
-                        tokenStyle = 'text-blue-400 font-bold';
-                      } else if (token.role === 'timeSignal') {
-                        tokenStyle = 'text-zinc-300 font-normal';
-                      }
+            <div className="w-full py-2.5 sm:py-3.5 flex flex-col items-center justify-center relative z-20 overflow-visible min-h-[4rem] sm:min-h-[4.5rem]">
+              <motion.div
+                layout="position"
+                transition={{ layout: { duration: 0.4, ease: [0.85, 0, 0.15, 1] } }}
+                className="inline-flex items-baseline justify-center flex-wrap gap-y-2 min-h-[3.5rem] sm:min-h-[4rem] text-2xl sm:text-3xl md:text-4xl font-mono font-bold text-center relative z-10"
+                style={{ position: 'relative', isolation: 'isolate' }}
+              >
+                <AnimatePresence initial={false}>
+                  {wordTokens.map((token, idx) => {
+                    let tokenStyle = 'text-white';
+                    if (token.role === 'invalid') {
+                      tokenStyle = 'text-rose-400 font-bold italic tracking-wide';
+                    } else if (token.role === 'subject-contracted') {
+                      tokenStyle = 'text-sky-300 font-bold';
+                    } else if (token.role === 'verb') {
+                      tokenStyle = token.isIng
+                        ? 'text-cyan-400 font-bold'
+                        : token.isV3
+                        ? 'text-emerald-300 font-bold'
+                        : 'text-emerald-400 font-bold';
+                    } else if (token.role === 'complement') {
+                      tokenStyle = 'text-purple-400 font-bold';
+                    } else if (token.role === 'object') {
+                      tokenStyle = 'text-amber-300 font-semibold';
+                    } else if (token.role === 'agent') {
+                      tokenStyle = 'text-zinc-400 font-normal italic';
+                    } else if (token.role === 'helper-have') {
+                      tokenStyle = 'text-indigo-400 font-bold';
+                    } else if (token.role === 'helper-be') {
+                      tokenStyle = 'text-blue-400 font-bold';
+                    } else if (token.role === 'helper-negative') {
+                      tokenStyle = 'text-red-400 font-bold';
+                    } else if (token.role === 'helper-question') {
+                      tokenStyle = 'text-amber-400 font-bold';
+                    } else if (token.role === 'helper-negative-question') {
+                      tokenStyle = 'text-rose-400 font-bold';
+                    } else if (token.role === 'helper-modal') {
+                      tokenStyle = 'text-blue-400 font-bold';
+                    } else if (token.role === 'timeSignal') {
+                      tokenStyle = 'text-zinc-300 font-normal';
+                    }
 
-                      const isLastWord = idx === wordTokens.length - 1;
-                      const persistentLayoutId = getPersistentLayoutId(token);
+                    const isLastWord = idx === wordTokens.length - 1;
+                    const persistentLayoutId = getPersistentLayoutId(token);
 
-                      return (
-                        <SentenceTokenItem
-                          key={persistentLayoutId}
-                          persistentLayoutId={persistentLayoutId}
-                          token={token}
-                          tokenStyle={tokenStyle}
-                          punctuationMark={isLastWord ? punctuationMark : null}
-                          activeTooltipTokenId={activeTooltipTokenId}
-                          setActiveTooltipTokenId={setActiveTooltipTokenId}
-                          activeVerb={activeVerb}
-                          staggerDelay={tokenDelaysMap[persistentLayoutId] || 0}
-                        />
-                      );
-                    })}
-                  </AnimatePresence>
-                </motion.div>
-              </LayoutGroup>
+                    return (
+                      <SentenceTokenItem
+                        key={persistentLayoutId}
+                        persistentLayoutId={persistentLayoutId}
+                        token={token}
+                        tokenStyle={tokenStyle}
+                        punctuationMark={isLastWord ? punctuationMark : null}
+                        activeTooltipTokenId={activeTooltipTokenId}
+                        setActiveTooltipTokenId={setActiveTooltipTokenId}
+                        activeVerb={activeVerb}
+                      />
+                    );
+                  })}
+                </AnimatePresence>
+              </motion.div>
 
               {/* Dynamic Indonesian Translation Bar */}
               {showTranslation && sentenceData.translation && (
@@ -1134,14 +995,10 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
                   &ldquo;{sentenceData.translation}&rdquo;
                 </motion.div>
               )}
-            </motion.div>
+            </div>
 
             {/* 3. Form Switcher Bar: Minimalist Icons (+, -, ?, -?) */}
-            <motion.div
-              layout="position"
-              transition={{ layout: { duration: 0.75, ease: [0.16, 1, 0.3, 1] } }}
-              className="flex items-center justify-center gap-5 sm:gap-7 py-0.5"
-            >
+            <div className="flex items-center justify-center gap-5 sm:gap-7 py-0.5">
               <button
                 type="button"
                 onClick={() => setForm('positive')}
@@ -1206,8 +1063,8 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M14.5 8c0-1.8 1.4-3 3.3-3 1.9 0 3.2 1.2 3.2 2.8 0 1.5-1 2.3-2.1 3.1-.9.7-1.4 1.3-1.4 2.6v.5M17.5 18h.01" />
                 </svg>
               </button>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
 
           {/* ========================================================================= */}
           {/* BOTTOM SECTION: RESTRUCTURED 3-ROW CONTROL CONSOLE                        */}
