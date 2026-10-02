@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, LayoutGroup, AnimatePresence } from 'framer-motion';
+import { X } from 'lucide-react';
 import {
   buildSentence,
   detectSubjectType,
@@ -507,6 +508,7 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
   const [verb, setVerb] = useState('study');
   const [customVerbInput, setCustomVerbInput] = useState('');
   const [timeSignal, setTimeSignal] = useState('every day');
+  const [customTimeSignalInput, setCustomTimeSignalInput] = useState('');
 
   const [verbSuggestions, setVerbSuggestions] = useState([]);
   const [showVerbSuggestions, setShowVerbSuggestions] = useState(false);
@@ -526,7 +528,10 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
     if (initialConfig.verb) setVerb(initialConfig.verb);
     if (initialConfig.nominalComplement) setNominalComplement(initialConfig.nominalComplement);
     if (initialConfig.object !== undefined) setObject(initialConfig.object);
-    if (initialConfig.timeSignal) setTimeSignal(initialConfig.timeSignal);
+    if (initialConfig.timeSignal) {
+      setTimeSignal(initialConfig.timeSignal);
+      setCustomTimeSignalInput('');
+    }
     if (initialConfig.useContraction !== undefined) setUseContraction(initialConfig.useContraction);
     if (initialConfig.isPassive !== undefined) setIsPassive(initialConfig.isPassive);
   }, [initialConfig]);
@@ -541,6 +546,7 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
         setIsPassive(false);
       }
       setTimeSignal('none');
+      setCustomTimeSignalInput('');
       setShowVerbSuggestions(false);
       setShowNominalSuggestions(false);
       setOpenPicker(null);
@@ -550,6 +556,7 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
   // Switch time signal default when tense changes (preserve 'none' if chosen)
   const handleTenseChange = (newTense) => {
     setTense(newTense);
+    setCustomTimeSignalInput('');
     if (timeSignal === 'none') {
       return;
     }
@@ -560,6 +567,7 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
   // Switch time signal default when aspect changes (preserve 'none' if chosen)
   const handleAspectChange = (newAspect) => {
     setAspect(newAspect);
+    setCustomTimeSignalInput('');
     if (timeSignal === 'none') {
       return;
     }
@@ -613,6 +621,8 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
       : object;
   const activeComplement =
     customComplementInput.trim() !== '' ? customComplementInput.trim() : nominalComplement;
+  const activeTimeSignal =
+    customTimeSignalInput.trim() !== '' ? customTimeSignalInput.trim() : timeSignal;
 
   const currentVerbLookup = useMemo(() => lookupVerb(activeVerb), [activeVerb]);
   const isCurrentVerbTransitive = currentVerbLookup.isValid
@@ -635,7 +645,7 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
       tense,
       aspect,
       form,
-      timeSignal: timeSignal === 'none' ? null : timeSignal,
+      timeSignal: activeTimeSignal === 'none' ? null : activeTimeSignal,
       contracted: useContraction,
       sentenceType,
       nominalComplement: activeComplement,
@@ -648,7 +658,7 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
     tense,
     aspect,
     form,
-    timeSignal,
+    activeTimeSignal,
     useContraction,
     sentenceType,
     activeComplement,
@@ -726,7 +736,7 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
     setActiveTooltipTokenId(null);
   }, [sentenceData]);
 
-  // Tutup dropdown picker saat klik di luar area picker
+  // Tutup dropdown picker saat klik di luar area picker atau tombol Escape ditekan
   useEffect(() => {
     const handlePickerOutsideClick = (e) => {
       if (pickerContainerRef.current && !pickerContainerRef.current.contains(e.target)) {
@@ -734,12 +744,20 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
       }
     };
 
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setOpenPicker(null);
+      }
+    };
+
     document.addEventListener('mousedown', handlePickerOutsideClick);
     document.addEventListener('touchstart', handlePickerOutsideClick);
+    window.addEventListener('keydown', handleKeyDown);
 
     return () => {
       document.removeEventListener('mousedown', handlePickerOutsideClick);
       document.removeEventListener('touchstart', handlePickerOutsideClick);
+      window.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
 
@@ -971,6 +989,7 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
     setNominalComplement('happy');
     setCustomComplementInput('');
     setTimeSignal('every day');
+    setCustomTimeSignalInput('');
     setVerbSuggestions([]);
     setShowVerbSuggestions(false);
     setNominalSuggestions([]);
@@ -1338,48 +1357,110 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
                   <div className="flex flex-col truncate pr-1">
                     <span className="text-[9px] uppercase font-mono text-zinc-500 leading-tight">Time Signal</span>
                     <span className="text-xs font-mono font-bold text-zinc-200 truncate">
-                      {timeSignal === 'none' ? '(Tanpa)' : timeSignal}
+                      {activeTimeSignal === 'none' ? '(Tanpa)' : activeTimeSignal}
                     </span>
                   </div>
                   <span className="text-zinc-500 text-[10px]">▾</span>
                 </button>
 
-                {openPicker === 'timeSignal' && (
-                  <div className="absolute bottom-full mb-2 left-0 z-50 w-64 sm:w-72 bg-[#161827] border border-zinc-700/80 rounded-xl p-3 shadow-2xl space-y-2">
-                    <div className="text-[11px] font-mono text-zinc-400 font-bold uppercase tracking-wider">
-                      Pilih Time Signal
-                    </div>
-                    <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto no-scrollbar">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setTimeSignal('none');
-                          setOpenPicker(null);
-                        }}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-mono border-0 cursor-pointer ${
-                          timeSignal === 'none' ? 'bg-zinc-700 text-white font-bold' : 'bg-[#1e2235] text-zinc-400 hover:text-white'
-                        }`}
+                <AnimatePresence>
+                  {openPicker === 'timeSignal' && (
+                    <div
+                      className="max-md:fixed max-md:inset-0 max-md:z-50 max-md:bg-black/80 max-md:backdrop-blur-sm max-md:flex max-md:items-center max-md:justify-center max-md:p-4 md:absolute md:inset-auto md:bottom-full md:mb-2 md:left-0 md:z-50 md:block"
+                      onClick={() => setOpenPicker(null)}
+                    >
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ duration: 0.15 }}
+                        className="w-full max-w-sm md:w-72 bg-[#161827] border border-zinc-700/80 rounded-2xl md:rounded-xl p-4 md:p-3 shadow-2xl space-y-3 max-h-[85vh] md:max-h-none overflow-y-auto no-scrollbar"
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        (Tanpa)
-                      </button>
-                      {(activeSignalsMap[aspect]?.[tense] || []).map((ts) => (
-                        <button
-                          key={ts}
-                          type="button"
-                          onClick={() => {
-                            setTimeSignal(ts);
-                            setOpenPicker(null);
-                          }}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-mono border-0 cursor-pointer ${
-                            timeSignal === ts ? 'bg-blue-600 text-white font-bold' : 'bg-[#1e2235] text-zinc-400 hover:text-white'
-                          }`}
-                        >
-                          {ts}
-                        </button>
-                      ))}
+                        <div className="flex items-center justify-between pb-1.5 border-b border-zinc-800">
+                          <span className="text-xs font-mono text-zinc-300 font-bold uppercase tracking-wider">
+                            Pilih Time Signal
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setOpenPicker(null)}
+                            className="p-1 -mr-1 text-zinc-400 hover:text-white rounded-lg transition-colors border-0 bg-transparent cursor-pointer flex items-center justify-center"
+                            aria-label="Tutup"
+                          >
+                            <X size={15} />
+                          </button>
+                        </div>
+
+                        {/* Opsi Paling Atas: Field Input Custom Value */}
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-mono uppercase text-zinc-400 font-semibold tracking-wider">
+                            Custom Time Signal
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              value={customTimeSignalInput}
+                              onChange={(e) => setCustomTimeSignalInput(e.target.value)}
+                              placeholder="Ketik time signal kustom..."
+                              className="w-full h-8 px-2.5 rounded-lg bg-[#1e2235] text-xs font-mono text-white placeholder-zinc-500 border border-zinc-700/70 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            />
+                            {customTimeSignalInput && (
+                              <button
+                                type="button"
+                                onClick={() => setCustomTimeSignalInput('')}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200 text-xs font-mono bg-transparent border-0 cursor-pointer"
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Presets */}
+                        <div className="pt-2 border-t border-zinc-800/80 space-y-1.5">
+                          <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider font-semibold">
+                            Atau Pilih Preset
+                          </div>
+                          <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto no-scrollbar">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setTimeSignal('none');
+                                setCustomTimeSignalInput('');
+                                setOpenPicker(null);
+                              }}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-mono border-0 cursor-pointer ${
+                                activeTimeSignal === 'none' && customTimeSignalInput === ''
+                                  ? 'bg-zinc-700 text-white font-bold'
+                                  : 'bg-[#1e2235] text-zinc-400 hover:text-white'
+                              }`}
+                            >
+                              (Tanpa)
+                            </button>
+                            {(activeSignalsMap[aspect]?.[tense] || []).map((ts) => (
+                              <button
+                                key={ts}
+                                type="button"
+                                onClick={() => {
+                                  setTimeSignal(ts);
+                                  setCustomTimeSignalInput('');
+                                  setOpenPicker(null);
+                                }}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-mono border-0 cursor-pointer ${
+                                  activeTimeSignal === ts && customTimeSignalInput === ''
+                                    ? 'bg-blue-600 text-white font-bold'
+                                    : 'bg-[#1e2235] text-zinc-400 hover:text-white'
+                                }`}
+                              >
+                                {ts}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </motion.div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* Picker 2: Subjek */}
@@ -1400,47 +1481,94 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
                   <span className="text-zinc-500 text-[10px]">▾</span>
                 </button>
 
-                {openPicker === 'subject' && (
-                  <div className="absolute bottom-full mb-2 left-0 sm:left-0 z-50 w-72 sm:w-80 bg-[#161827] border border-zinc-700/80 rounded-xl p-3 shadow-2xl space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-mono text-zinc-400 font-bold uppercase tracking-wider">
-                        Pilihan Subjek
-                      </span>
-                      <span className="text-[10px] font-mono text-amber-400 font-semibold">
-                        {subjectType}
-                      </span>
+                <AnimatePresence>
+                  {openPicker === 'subject' && (
+                    <div
+                      className="max-md:fixed max-md:inset-0 max-md:z-50 max-md:bg-black/80 max-md:backdrop-blur-sm max-md:flex max-md:items-center max-md:justify-center max-md:p-4 md:absolute md:inset-auto md:bottom-full md:mb-2 md:left-0 md:z-50 md:block"
+                      onClick={() => setOpenPicker(null)}
+                    >
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ duration: 0.15 }}
+                        className="w-full max-w-sm md:w-80 bg-[#161827] border border-zinc-700/80 rounded-2xl md:rounded-xl p-4 md:p-3 shadow-2xl space-y-3 max-h-[85vh] md:max-h-none overflow-y-auto no-scrollbar"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="flex items-center justify-between pb-1.5 border-b border-zinc-800">
+                          <span className="text-xs font-mono text-zinc-300 font-bold uppercase tracking-wider">
+                            Pilihan Subjek
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-mono text-amber-400 font-semibold">
+                              {subjectType}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setOpenPicker(null)}
+                              className="p-1 -mr-1 text-zinc-400 hover:text-white rounded-lg transition-colors border-0 bg-transparent cursor-pointer flex items-center justify-center"
+                              aria-label="Tutup"
+                            >
+                              <X size={15} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Opsi Paling Atas: Field Input Custom Value */}
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-mono uppercase text-zinc-400 font-semibold tracking-wider">
+                            Custom Subjek
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              value={customSubjectInput}
+                              onChange={(e) => setCustomSubjectInput(e.target.value)}
+                              placeholder="Ketik subjek kustom (misal: My teacher)..."
+                              className="w-full h-8 px-2.5 rounded-lg bg-[#1e2235] text-xs font-mono text-white placeholder-zinc-500 border border-zinc-700/70 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            />
+                            {customSubjectInput && (
+                              <button
+                                type="button"
+                                onClick={() => setCustomSubjectInput('')}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200 text-xs font-mono bg-transparent border-0 cursor-pointer"
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Presets */}
+                        <div className="pt-2 border-t border-zinc-800/80 space-y-1.5">
+                          <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider font-semibold">
+                            Atau Pilih Preset
+                          </div>
+                          <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto no-scrollbar">
+                            {SUBJECT_PRESETS.map((s) => (
+                              <button
+                                key={s}
+                                type="button"
+                                onClick={() => {
+                                  setSubject(s);
+                                  setCustomSubjectInput('');
+                                  setOpenPicker(null);
+                                }}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-mono border-0 cursor-pointer ${
+                                  activeSubject === s && customSubjectInput === ''
+                                    ? 'bg-blue-600 text-white font-bold'
+                                    : 'bg-[#1e2235] text-zinc-400 hover:text-white'
+                                }`}
+                              >
+                                {s}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </motion.div>
                     </div>
-                    <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto no-scrollbar">
-                      {SUBJECT_PRESETS.map((s) => (
-                        <button
-                          key={s}
-                          type="button"
-                          onClick={() => {
-                            setSubject(s);
-                            setCustomSubjectInput('');
-                            setOpenPicker(null);
-                          }}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-mono border-0 cursor-pointer ${
-                            activeSubject === s && customSubjectInput === ''
-                              ? 'bg-blue-600 text-white font-bold'
-                              : 'bg-[#1e2235] text-zinc-400 hover:text-white'
-                          }`}
-                        >
-                          {s}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="pt-1.5 border-t border-zinc-800">
-                      <input
-                        type="text"
-                        value={customSubjectInput}
-                        onChange={(e) => setCustomSubjectInput(e.target.value)}
-                        placeholder="Ketik subjek kustom..."
-                        className="w-full h-7 px-2.5 rounded-lg bg-[#1e2235] text-xs font-mono text-white placeholder-zinc-500 border-0 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      />
-                    </div>
-                  </div>
-                )}
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* Picker 3: Verb / Komplemen */}
@@ -1469,151 +1597,249 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
                   <span className="text-zinc-500 text-[10px]">▾</span>
                 </button>
 
-                {openPicker === 'predicate' && (
-                  <div className="absolute bottom-full mb-2 right-0 sm:right-auto sm:left-0 z-50 w-72 sm:w-84 bg-[#161827] border border-zinc-700/80 rounded-xl p-3 shadow-2xl space-y-2.5">
-                    {sentenceType === 'verbal' ? (
-                      <>
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-mono text-zinc-400 font-bold uppercase tracking-wider">
-                            Kata Kerja (Verb 1)
-                          </span>
-                          <span className="text-[10px] font-mono text-emerald-400">
-                            {sentenceData.verbData?.type === 'irregular' ? 'Irregular' : 'Regular'}
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto no-scrollbar">
-                          {VERB_PRESETS.map((v) => (
-                            <button
-                              key={v}
-                              type="button"
-                              onClick={() => {
-                                setVerb(v);
-                                setCustomVerbInput('');
-                                setShowVerbSuggestions(false);
-                                setOpenPicker(null);
-                              }}
-                              className={`px-2.5 py-1 rounded-lg text-xs font-mono border-0 cursor-pointer ${
-                                activeVerb === v && customVerbInput === ''
-                                  ? 'bg-emerald-600 text-white font-bold'
-                                  : 'bg-[#1e2235] text-zinc-400 hover:text-white'
-                              }`}
-                            >
-                              {v}
-                            </button>
-                          ))}
-                        </div>
-                        <div className="pt-1.5 border-t border-zinc-800 relative">
-                          <input
-                            type="text"
-                            value={customVerbInput}
-                            onChange={(e) => handleCustomVerbChange(e.target.value)}
-                            onFocus={() => {
-                              if (customVerbInput.trim().length >= 2 && verbSuggestions.length > 0) {
-                                setShowVerbSuggestions(true);
-                              }
-                            }}
-                            onBlur={() => {
-                              setTimeout(() => setShowVerbSuggestions(false), 200);
-                            }}
-                            placeholder="Ketik Verb 1 kustom..."
-                            className={`w-full h-7 px-2.5 rounded-lg bg-[#1e2235] text-xs font-mono placeholder-zinc-500 border-0 focus:outline-none transition-all ${
-                              customVerbInput.trim() !== '' && !sentenceData.isVerbValid
-                                ? 'ring-1 ring-rose-500 text-rose-300'
-                                : 'text-white focus:ring-1 focus:ring-emerald-500'
-                            }`}
-                          />
-                          {showVerbSuggestions && verbSuggestions.length > 0 && (
-                            <div className="absolute bottom-full mb-1 left-0 z-50 bg-[#141624] border border-zinc-700/80 rounded-lg p-1 shadow-2xl flex flex-col gap-0.5 min-w-[140px]">
-                              {verbSuggestions.map((sug) => (
+                <AnimatePresence>
+                  {openPicker === 'predicate' && (
+                    <div
+                      className="max-md:fixed max-md:inset-0 max-md:z-50 max-md:bg-black/80 max-md:backdrop-blur-sm max-md:flex max-md:items-center max-md:justify-center max-md:p-4 md:absolute md:inset-auto md:bottom-full md:mb-2 md:left-0 md:z-50 md:block"
+                      onClick={() => setOpenPicker(null)}
+                    >
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ duration: 0.15 }}
+                        className="w-full max-w-sm md:w-84 bg-[#161827] border border-zinc-700/80 rounded-2xl md:rounded-xl p-4 md:p-3 shadow-2xl space-y-3 max-h-[85vh] md:max-h-none overflow-y-auto no-scrollbar"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {sentenceType === 'verbal' ? (
+                          <>
+                            <div className="flex items-center justify-between pb-1.5 border-b border-zinc-800">
+                              <span className="text-xs font-mono text-zinc-300 font-bold uppercase tracking-wider">
+                                Kata Kerja (Verb 1)
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-mono text-emerald-400">
+                                  {sentenceData.verbData?.type === 'irregular' ? 'Irregular' : 'Regular'}
+                                </span>
                                 <button
-                                  key={sug}
                                   type="button"
-                                  onMouseDown={(e) => {
-                                    e.preventDefault();
-                                    handleSelectVerbSuggestion(sug);
-                                  }}
-                                  className="px-2 py-0.5 text-left text-xs font-mono text-zinc-300 hover:text-white hover:bg-emerald-600/30 rounded cursor-pointer transition-colors border-0"
+                                  onClick={() => setOpenPicker(null)}
+                                  className="p-1 -mr-1 text-zinc-400 hover:text-white rounded-lg transition-colors border-0 bg-transparent cursor-pointer flex items-center justify-center"
+                                  aria-label="Tutup"
                                 >
-                                  {sug}
+                                  <X size={15} />
                                 </button>
-                              ))}
+                              </div>
                             </div>
-                          )}
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-mono text-zinc-400 font-bold uppercase tracking-wider">
-                            Komplemen Nominal
-                          </span>
-                          <span className="text-[10px] font-mono text-purple-400">
-                            {sentenceData.nominalData?.typeLabel || 'Sifat / Benda / Tempat'}
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto no-scrollbar">
-                          {NOMINAL_PRESETS.map((comp) => (
-                            <button
-                              key={comp}
-                              type="button"
-                              onClick={() => {
-                                setNominalComplement(comp);
-                                setCustomComplementInput('');
-                                setShowNominalSuggestions(false);
-                                setOpenPicker(null);
-                              }}
-                              className={`px-2.5 py-1 rounded-lg text-xs font-mono border-0 cursor-pointer ${
-                                activeComplement === comp && customComplementInput === ''
-                                  ? 'bg-purple-600 text-white font-bold'
-                                  : 'bg-[#1e2235] text-zinc-400 hover:text-white'
-                              }`}
-                            >
-                              {comp}
-                            </button>
-                          ))}
-                        </div>
-                        <div className="pt-1.5 border-t border-zinc-800 relative">
-                          <input
-                            type="text"
-                            value={customComplementInput}
-                            onChange={(e) => handleCustomComplementChange(e.target.value)}
-                            onFocus={() => {
-                              if (customComplementInput.trim().length >= 2 && nominalSuggestions.length > 0) {
-                                setShowNominalSuggestions(true);
-                              }
-                            }}
-                            onBlur={() => {
-                              setTimeout(() => setShowNominalSuggestions(false), 200);
-                            }}
-                            placeholder="Ketik komplemen kustom..."
-                            className={`w-full h-7 px-2.5 rounded-lg bg-[#1e2235] text-xs font-mono placeholder-zinc-500 border-0 focus:outline-none transition-all ${
-                              customComplementInput.trim() !== '' && !sentenceData.isComplementValid
-                                ? 'ring-1 ring-rose-500 text-rose-300'
-                                : 'text-white focus:ring-1 focus:ring-purple-500'
-                            }`}
-                          />
-                          {showNominalSuggestions && nominalSuggestions.length > 0 && (
-                            <div className="absolute bottom-full mb-1 left-0 z-50 bg-[#141624] border border-zinc-700/80 rounded-lg p-1 shadow-2xl flex flex-col gap-0.5 min-w-[150px]">
-                              {nominalSuggestions.map((sug) => (
+
+                            {/* Opsi Paling Atas: Field Input Custom Value */}
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between">
+                                <label className="text-[10px] font-mono uppercase text-zinc-400 font-semibold tracking-wider">
+                                  Custom Verb 1
+                                </label>
+                                {customVerbInput.trim() !== '' && !sentenceData.isVerbValid && (
+                                  <span className="text-[10px] font-mono text-rose-400">Tidak di kamus</span>
+                                )}
+                              </div>
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  value={customVerbInput}
+                                  onChange={(e) => handleCustomVerbChange(e.target.value)}
+                                  onFocus={() => {
+                                    if (customVerbInput.trim().length >= 2 && verbSuggestions.length > 0) {
+                                      setShowVerbSuggestions(true);
+                                    }
+                                  }}
+                                  onBlur={() => {
+                                    setTimeout(() => setShowVerbSuggestions(false), 200);
+                                  }}
+                                  placeholder="Ketik Verb 1 kustom..."
+                                  className={`w-full h-8 px-2.5 rounded-lg bg-[#1e2235] text-xs font-mono placeholder-zinc-500 border border-zinc-700/70 focus:outline-none transition-all ${
+                                    customVerbInput.trim() !== '' && !sentenceData.isVerbValid
+                                      ? 'ring-1 ring-rose-500 text-rose-300'
+                                      : 'text-white focus:ring-1 focus:ring-emerald-500'
+                                  }`}
+                                />
+                                {customVerbInput && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setCustomVerbInput('');
+                                      setShowVerbSuggestions(false);
+                                    }}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200 text-xs font-mono bg-transparent border-0 cursor-pointer"
+                                  >
+                                    ✕
+                                  </button>
+                                )}
+                              </div>
+                              {showVerbSuggestions && verbSuggestions.length > 0 && (
+                                <div className="bg-[#141624] border border-zinc-700/80 rounded-lg p-1.5 shadow-xl flex flex-col gap-1 max-h-36 overflow-y-auto mt-1">
+                                  <div className="text-[9px] uppercase font-mono text-zinc-500 px-1 font-semibold">Saran Kata Kerja</div>
+                                  {verbSuggestions.map((sug) => (
+                                    <button
+                                      key={sug}
+                                      type="button"
+                                      onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        handleSelectVerbSuggestion(sug);
+                                      }}
+                                      className="px-2 py-1 text-left text-xs font-mono text-zinc-200 hover:text-white hover:bg-emerald-600/30 rounded cursor-pointer transition-colors border-0"
+                                    >
+                                      {sug}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Presets */}
+                            <div className="pt-2 border-t border-zinc-800/80 space-y-1.5">
+                              <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider font-semibold">
+                                Atau Pilih Preset
+                              </div>
+                              <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto no-scrollbar">
+                                {VERB_PRESETS.map((v) => (
+                                  <button
+                                    key={v}
+                                    type="button"
+                                    onClick={() => {
+                                      setVerb(v);
+                                      setCustomVerbInput('');
+                                      setShowVerbSuggestions(false);
+                                      setOpenPicker(null);
+                                    }}
+                                    className={`px-2.5 py-1 rounded-lg text-xs font-mono border-0 cursor-pointer ${
+                                      activeVerb === v && customVerbInput === ''
+                                        ? 'bg-emerald-600 text-white font-bold'
+                                        : 'bg-[#1e2235] text-zinc-400 hover:text-white'
+                                    }`}
+                                  >
+                                    {v}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex items-center justify-between pb-1.5 border-b border-zinc-800">
+                              <span className="text-xs font-mono text-zinc-300 font-bold uppercase tracking-wider">
+                                Komplemen Nominal
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-mono text-purple-400">
+                                  {sentenceData.nominalData?.typeLabel || 'Sifat / Benda / Tempat'}
+                                </span>
                                 <button
-                                  key={sug}
                                   type="button"
-                                  onMouseDown={(e) => {
-                                    e.preventDefault();
-                                    handleSelectNominalSuggestion(sug);
-                                  }}
-                                  className="px-2 py-0.5 text-left text-xs font-mono text-zinc-300 hover:text-white hover:bg-purple-600/30 rounded cursor-pointer transition-colors border-0"
+                                  onClick={() => setOpenPicker(null)}
+                                  className="p-1 -mr-1 text-zinc-400 hover:text-white rounded-lg transition-colors border-0 bg-transparent cursor-pointer flex items-center justify-center"
+                                  aria-label="Tutup"
                                 >
-                                  {sug}
+                                  <X size={15} />
                                 </button>
-                              ))}
+                              </div>
                             </div>
-                          )}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
+
+                            {/* Opsi Paling Atas: Field Input Custom Value */}
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between">
+                                <label className="text-[10px] font-mono uppercase text-zinc-400 font-semibold tracking-wider">
+                                  Custom Komplemen
+                                </label>
+                                {customComplementInput.trim() !== '' && !sentenceData.isComplementValid && (
+                                  <span className="text-[10px] font-mono text-rose-400">Tidak di kamus</span>
+                                )}
+                              </div>
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  value={customComplementInput}
+                                  onChange={(e) => handleCustomComplementChange(e.target.value)}
+                                  onFocus={() => {
+                                    if (customComplementInput.trim().length >= 2 && nominalSuggestions.length > 0) {
+                                      setShowNominalSuggestions(true);
+                                    }
+                                  }}
+                                  onBlur={() => {
+                                    setTimeout(() => setShowNominalSuggestions(false), 200);
+                                  }}
+                                  placeholder="Ketik komplemen kustom..."
+                                  className={`w-full h-8 px-2.5 rounded-lg bg-[#1e2235] text-xs font-mono placeholder-zinc-500 border border-zinc-700/70 focus:outline-none transition-all ${
+                                    customComplementInput.trim() !== '' && !sentenceData.isComplementValid
+                                      ? 'ring-1 ring-rose-500 text-rose-300'
+                                      : 'text-white focus:ring-1 focus:ring-purple-500'
+                                  }`}
+                                />
+                                {customComplementInput && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setCustomComplementInput('');
+                                      setShowNominalSuggestions(false);
+                                    }}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200 text-xs font-mono bg-transparent border-0 cursor-pointer"
+                                  >
+                                    ✕
+                                  </button>
+                                )}
+                              </div>
+                              {showNominalSuggestions && nominalSuggestions.length > 0 && (
+                                <div className="bg-[#141624] border border-zinc-700/80 rounded-lg p-1.5 shadow-xl flex flex-col gap-1 max-h-36 overflow-y-auto mt-1">
+                                  <div className="text-[9px] uppercase font-mono text-zinc-500 px-1 font-semibold">Saran Komplemen</div>
+                                  {nominalSuggestions.map((sug) => (
+                                    <button
+                                      key={sug}
+                                      type="button"
+                                      onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        handleSelectNominalSuggestion(sug);
+                                      }}
+                                      className="px-2 py-1 text-left text-xs font-mono text-zinc-200 hover:text-white hover:bg-purple-600/30 rounded cursor-pointer transition-colors border-0"
+                                    >
+                                      {sug}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Presets */}
+                            <div className="pt-2 border-t border-zinc-800/80 space-y-1.5">
+                              <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider font-semibold">
+                                Atau Pilih Preset
+                              </div>
+                              <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto no-scrollbar">
+                                {NOMINAL_PRESETS.map((comp) => (
+                                  <button
+                                    key={comp}
+                                    type="button"
+                                    onClick={() => {
+                                      setNominalComplement(comp);
+                                      setCustomComplementInput('');
+                                      setShowNominalSuggestions(false);
+                                      setOpenPicker(null);
+                                    }}
+                                    className={`px-2.5 py-1 rounded-lg text-xs font-mono border-0 cursor-pointer ${
+                                      activeComplement === comp && customComplementInput === ''
+                                        ? 'bg-purple-600 text-white font-bold'
+                                        : 'bg-[#1e2235] text-zinc-400 hover:text-white'
+                                    }`}
+                                  >
+                                    {comp}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </motion.div>
+                    </div>
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* Picker 4: Objek */}
@@ -1655,60 +1881,107 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
                       <span className="text-zinc-500 text-[10px]">▾</span>
                     </button>
 
-                    {openPicker === 'object' && (
-                      <div className="absolute bottom-full mb-2 right-0 z-50 w-72 sm:w-80 bg-[#161827] border border-zinc-700/80 rounded-xl p-3 shadow-2xl space-y-2.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-mono text-zinc-400 font-bold uppercase tracking-wider">
-                            Pilihan Objek {isPassive ? '(Subjek Pasif)' : ''}
-                          </span>
-                          {isPassive && (
-                            <span className="text-[10px] font-mono text-amber-400">
-                              {detectSubjectType(sentenceData.passiveSubject)}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto no-scrollbar">
-                          {OBJECT_PRESETS.map((objItem) => {
-                            const isNonePreset = objItem === '(Tanpa Objek)';
-                            const isSelected = isNonePreset
-                              ? (!activeObject || object === 'none') && customObjectInput === ''
-                              : activeObject === objItem && customObjectInput === '';
-                            const isDisabled = isPassive && isNonePreset;
+                    <AnimatePresence>
+                      {openPicker === 'object' && (
+                        <div
+                          className="max-md:fixed max-md:inset-0 max-md:z-50 max-md:bg-black/80 max-md:backdrop-blur-sm max-md:flex max-md:items-center max-md:justify-center max-md:p-4 md:absolute md:inset-auto md:bottom-full md:mb-2 md:right-0 md:z-50 md:block"
+                          onClick={() => setOpenPicker(null)}
+                        >
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            transition={{ duration: 0.15 }}
+                            className="w-full max-w-sm md:w-80 bg-[#161827] border border-zinc-700/80 rounded-2xl md:rounded-xl p-4 md:p-3 shadow-2xl space-y-3 max-h-[85vh] md:max-h-none overflow-y-auto no-scrollbar"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div className="flex items-center justify-between pb-1.5 border-b border-zinc-800">
+                              <span className="text-xs font-mono text-zinc-300 font-bold uppercase tracking-wider">
+                                Pilihan Objek {isPassive ? '(Subjek Pasif)' : ''}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                {isPassive && (
+                                  <span className="text-[10px] font-mono text-amber-400">
+                                    {detectSubjectType(sentenceData.passiveSubject)}
+                                  </span>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => setOpenPicker(null)}
+                                  className="p-1 -mr-1 text-zinc-400 hover:text-white rounded-lg transition-colors border-0 bg-transparent cursor-pointer flex items-center justify-center"
+                                  aria-label="Tutup"
+                                >
+                                  <X size={15} />
+                                </button>
+                              </div>
+                            </div>
 
-                            return (
-                              <button
-                                key={objItem}
-                                type="button"
-                                disabled={isDisabled}
-                                onClick={() => {
-                                  setObject(isNonePreset ? 'none' : objItem);
-                                  setCustomObjectInput('');
-                                  setOpenPicker(null);
-                                }}
-                                className={`px-2.5 py-1 rounded-lg text-xs font-mono border-0 ${
-                                  isDisabled
-                                    ? 'bg-zinc-800/40 text-zinc-600 cursor-not-allowed'
-                                    : isSelected
-                                    ? 'bg-amber-600 text-white font-bold cursor-pointer'
-                                    : 'bg-[#1e2235] text-zinc-400 hover:text-white cursor-pointer'
-                                }`}
-                              >
-                                {objItem}
-                              </button>
-                            );
-                          })}
+                            {/* Opsi Paling Atas: Field Input Custom Value */}
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-mono uppercase text-zinc-400 font-semibold tracking-wider">
+                                Custom Objek
+                              </label>
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  value={customObjectInput}
+                                  onChange={(e) => setCustomObjectInput(e.target.value)}
+                                  placeholder="Ketik objek kustom..."
+                                  className="w-full h-8 px-2.5 rounded-lg bg-[#1e2235] text-xs font-mono text-white placeholder-zinc-500 border border-zinc-700/70 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                />
+                                {customObjectInput && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setCustomObjectInput('')}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200 text-xs font-mono bg-transparent border-0 cursor-pointer"
+                                  >
+                                    ✕
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Presets */}
+                            <div className="pt-2 border-t border-zinc-800/80 space-y-1.5">
+                              <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider font-semibold">
+                                Atau Pilih Preset
+                              </div>
+                              <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto no-scrollbar">
+                                {OBJECT_PRESETS.map((objItem) => {
+                                  const isNonePreset = objItem === '(Tanpa Objek)';
+                                  const isSelected = isNonePreset
+                                    ? (!activeObject || object === 'none') && customObjectInput === ''
+                                    : activeObject === objItem && customObjectInput === '';
+                                  const isDisabled = isPassive && isNonePreset;
+
+                                  return (
+                                    <button
+                                      key={objItem}
+                                      type="button"
+                                      disabled={isDisabled}
+                                      onClick={() => {
+                                        setObject(isNonePreset ? 'none' : objItem);
+                                        setCustomObjectInput('');
+                                        setOpenPicker(null);
+                                      }}
+                                      className={`px-2.5 py-1 rounded-lg text-xs font-mono border-0 ${
+                                        isDisabled
+                                          ? 'bg-zinc-800/40 text-zinc-600 cursor-not-allowed'
+                                          : isSelected
+                                          ? 'bg-amber-600 text-white font-bold cursor-pointer'
+                                          : 'bg-[#1e2235] text-zinc-400 hover:text-white cursor-pointer'
+                                      }`}
+                                    >
+                                      {objItem}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </motion.div>
                         </div>
-                        <div className="pt-1.5 border-t border-zinc-800">
-                          <input
-                            type="text"
-                            value={customObjectInput}
-                            onChange={(e) => setCustomObjectInput(e.target.value)}
-                            placeholder="Ketik objek kustom..."
-                            className="w-full h-7 px-2.5 rounded-lg bg-[#1e2235] text-xs font-mono text-white placeholder-zinc-500 border-0 focus:outline-none focus:ring-1 focus:ring-amber-500"
-                          />
-                        </div>
-                      </div>
-                    )}
+                      )}
+                    </AnimatePresence>
                   </>
                 )}
               </div>
