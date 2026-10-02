@@ -13,6 +13,7 @@ import {
   OBJECT_PRESETS,
   getTenseFormulaInfo,
   getSentenceLogicBlocks,
+  getSentenceTimeBlock,
 } from '../../utils/grammarEngine.js';
 import { lookupVerb, getVerbSuggestions } from '../../data/dictionary/verbsData';
 import { lookupNominal, getNominalSuggestions } from '../../data/dictionary/nominalData';
@@ -880,6 +881,13 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
     subjectType,
   ]);
 
+  const sentenceTimeBlock = useMemo(() => {
+    return getSentenceTimeBlock({
+      tense,
+      sentenceData,
+    });
+  }, [tense, sentenceData]);
+
   // Auto-reset selected logic block card when sentence configuration changes
   useEffect(() => {
     setSelectedBlockIndex(null);
@@ -896,8 +904,13 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
     useContraction,
   ]);
 
+  const isTimeSelected = selectedBlockIndex === 'time';
   const activeSelectedBlock =
-    selectedBlockIndex !== null ? sentenceLogicBlocks[selectedBlockIndex] : null;
+    selectedBlockIndex === 'time'
+      ? sentenceTimeBlock
+      : typeof selectedBlockIndex === 'number'
+      ? sentenceLogicBlocks[selectedBlockIndex]
+      : null;
   const highlightedTokenIds = activeSelectedBlock?.tokenIds || [];
   const hasActiveSelection = Boolean(
     activeSelectedBlock && highlightedTokenIds.length > 0
@@ -1953,6 +1966,53 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
             >
               <span className="text-xs sm:text-sm font-semibold text-zinc-300 tracking-wide">
                 {tenseFormulaInfo.name}
+              </span>
+            </motion.div>
+
+            {/* Single-Line TIME Card (PAST, PRESENT, FUTURE) */}
+            <motion.div
+              key={`time-${tense}-${sentenceTimeBlock.realization}`}
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.18 }}
+              role="button"
+              tabIndex={0}
+              aria-pressed={isTimeSelected}
+              onClick={() =>
+                setSelectedBlockIndex((prev) => (prev === 'time' ? null : 'time'))
+              }
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setSelectedBlockIndex((prev) => (prev === 'time' ? null : 'time'));
+                }
+              }}
+              className={`w-full max-w-sm sm:max-w-md mx-auto flex items-center justify-between px-3.5 sm:px-4 py-2 rounded-xl min-h-[38px] sm:min-h-[40px] cursor-pointer transition-all duration-200 select-none ${
+                isTimeSelected
+                  ? 'ring-2 ring-emerald-500/90 bg-emerald-950/30 border border-emerald-500/80 shadow-lg shadow-emerald-950/40 scale-[1.01]'
+                  : 'bg-[#141724] border border-zinc-700/80 shadow-md hover:border-zinc-500/90 hover:bg-[#181c2c]'
+              }`}
+            >
+              <span
+                className={`text-[10px] sm:text-[11px] font-mono font-bold tracking-widest uppercase transition-colors duration-200 ${
+                  isTimeSelected ? 'text-emerald-400' : 'text-blue-400'
+                }`}
+              >
+                {sentenceTimeBlock.category}
+              </span>
+              <span
+                className={`text-xs sm:text-sm font-mono font-extrabold tracking-wide transition-colors duration-200 ${
+                  isTimeSelected ? 'text-emerald-200' : 'text-white'
+                }`}
+              >
+                {sentenceTimeBlock.formula}
+              </span>
+              <span
+                className={`text-xs sm:text-sm font-mono italic truncate max-w-[130px] transition-colors duration-200 ${
+                  isTimeSelected ? 'text-emerald-300/80' : 'text-zinc-400'
+                }`}
+              >
+                &ldquo;{sentenceTimeBlock.realization}&rdquo;
               </span>
             </motion.div>
 

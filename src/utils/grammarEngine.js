@@ -2880,4 +2880,63 @@ export function getSentenceLogicBlocks({
   return blocks;
 }
 
+/**
+ * Menghasilkan informasi balok TIME (PAST, PRESENT, FUTURE)
+ * dan token kata kerja pertama yang mengemban waktu (finite verb).
+ */
+export function getSentenceTimeBlock({ tense, sentenceData }) {
+  const tokens = sentenceData?.tokens || [];
+
+  const isVerbToken = (t) => {
+    if (!t) return false;
+    if (
+      t.role === 'subject' ||
+      t.role === 'punctuation' ||
+      t.role === 'object' ||
+      t.role === 'agent' ||
+      t.role === 'complement' ||
+      t.role === 'timeSignal'
+    ) {
+      return false;
+    }
+    if (
+      t.id === 'token-not' ||
+      (t.role === 'helper-negative' && t.text?.toLowerCase() === 'not')
+    ) {
+      return false;
+    }
+    return (
+      t.role === 'verb' ||
+      t.role === 'helper-be' ||
+      t.role === 'helper-have' ||
+      t.role === 'helper-modal' ||
+      t.role === 'helper-negative' ||
+      t.role === 'helper-question' ||
+      t.role === 'helper-negative-question' ||
+      t.role === 'subject-contracted'
+    );
+  };
+
+  const firstVerbToken = tokens.find(isVerbToken) || null;
+  const firstVerbText = firstVerbToken
+    ? firstVerbToken.contractedHelper || firstVerbToken.text
+    : '';
+
+  let formula = 'PRESENT | V1';
+  if (tense === 'PAST') {
+    formula = 'PAST | V2';
+  } else if (tense === 'FUTURE') {
+    formula = 'FUTURE | MODAL';
+  } else {
+    formula = 'PRESENT | V1';
+  }
+
+  return {
+    category: 'TIME',
+    formula,
+    realization: firstVerbText ? firstVerbText.toLowerCase() : '',
+    tokenIds: firstVerbToken ? [firstVerbToken.id] : [],
+  };
+}
+
 
