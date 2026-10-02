@@ -2884,7 +2884,7 @@ export function getSentenceLogicBlocks({
  * Menghasilkan informasi balok TIME (PAST, PRESENT, FUTURE)
  * dan token kata kerja pertama yang mengemban waktu (finite verb).
  */
-export function getSentenceTimeBlock({ tense, sentenceData }) {
+export function getSentenceTimeBlock({ tense, sentenceData, activeVerb }) {
   const tokens = sentenceData?.tokens || [];
 
   const isVerbToken = (t) => {
@@ -2922,19 +2922,71 @@ export function getSentenceTimeBlock({ tense, sentenceData }) {
     ? firstVerbToken.contractedHelper || firstVerbToken.text
     : '';
 
-  let formula = 'PRESENT | V1';
+  let timeLabel = 'PRESENT';
+  let formLabel = 'V1';
   if (tense === 'PAST') {
-    formula = 'PAST | V2';
+    timeLabel = 'PAST';
+    formLabel = 'V2';
   } else if (tense === 'FUTURE') {
-    formula = 'FUTURE | MODAL';
+    timeLabel = 'FUTURE';
+    formLabel = 'MODAL';
   } else {
-    formula = 'PRESENT | V1';
+    timeLabel = 'PRESENT';
+    formLabel = 'V1';
+  }
+  const formula = `${timeLabel} | ${formLabel}`;
+
+  // Hitung teks realisasi dan step perubahan (misal: "have > had", "study > studied")
+  const raw = (firstVerbText || '').toLowerCase().replace(/[^a-z']/g, '');
+  const base = (activeVerb || 'study').toLowerCase().trim();
+  let realization = raw;
+
+  if (tense === 'PAST') {
+    if (raw.startsWith('had')) {
+      realization = 'have > had';
+    } else if (raw.startsWith('was')) {
+      realization = 'be > was';
+    } else if (raw.startsWith('were')) {
+      realization = 'be > were';
+    } else if (raw.startsWith('did')) {
+      realization = 'do > did';
+    } else if (raw) {
+      realization = base && raw !== base ? `${base} > ${raw}` : raw;
+    }
+  } else if (tense === 'PRESENT') {
+    if (raw.startsWith('has')) {
+      realization = 'have > has';
+    } else if (raw.startsWith('have')) {
+      realization = 'have';
+    } else if (raw === 'is' || raw.startsWith('isn')) {
+      realization = 'be > is';
+    } else if (raw === 'are' || raw.startsWith('aren')) {
+      realization = 'be > are';
+    } else if (raw === 'am') {
+      realization = 'be > am';
+    } else if (raw.startsWith('does')) {
+      realization = 'do > does';
+    } else if (raw.startsWith('do')) {
+      realization = 'do';
+    } else if (raw !== base && raw.length > 0) {
+      realization = `${base} > ${raw}`;
+    } else {
+      realization = raw || base;
+    }
+  } else if (tense === 'FUTURE') {
+    if (raw.includes('won')) {
+      realization = "will > won't";
+    } else {
+      realization = 'will';
+    }
   }
 
   return {
     category: 'TIME',
+    timeLabel,
+    formLabel,
     formula,
-    realization: firstVerbText ? firstVerbText.toLowerCase() : '',
+    realization,
     tokenIds: firstVerbToken ? [firstVerbToken.id] : [],
   };
 }

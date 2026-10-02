@@ -899,8 +899,9 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
     return getSentenceTimeBlock({
       tense,
       sentenceData,
+      activeVerb,
     });
-  }, [tense, sentenceData]);
+  }, [tense, sentenceData, activeVerb]);
 
   // Auto-reset selected logic block card when sentence configuration changes
   useEffect(() => {
@@ -2025,15 +2026,31 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
               >
                 {sentenceTimeBlock.category}
               </span>
-              <span
-                className={`text-xs sm:text-sm font-mono font-extrabold tracking-wide transition-colors duration-200 ${
-                  isTimeSelected ? 'text-emerald-200' : 'text-white'
-                }`}
-              >
-                {sentenceTimeBlock.formula}
+              <span className="text-xs sm:text-sm font-mono tracking-wide transition-colors duration-200 flex items-center">
+                <span
+                  className={
+                    isTimeSelected
+                      ? 'text-emerald-200 font-extrabold'
+                      : 'text-white font-extrabold'
+                  }
+                >
+                  {sentenceTimeBlock.timeLabel}
+                </span>
+                <span className="font-normal text-white/40 mx-1.5 sm:mx-2 select-none">
+                  |
+                </span>
+                <span
+                  className={
+                    isTimeSelected
+                      ? 'text-emerald-200 font-extrabold'
+                      : 'text-white font-extrabold'
+                  }
+                >
+                  {sentenceTimeBlock.formLabel}
+                </span>
               </span>
               <span
-                className={`text-xs sm:text-sm font-mono italic truncate max-w-[130px] transition-colors duration-200 ${
+                className={`text-xs sm:text-sm font-mono italic truncate max-w-[150px] sm:max-w-[190px] transition-colors duration-200 ${
                   isTimeSelected ? 'text-emerald-300/80' : 'text-zinc-400'
                 }`}
               >
