@@ -1901,9 +1901,9 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
           </div>
 
           {/* ========================================================================= */}
-          {/* TENSE IDENTITY & KAVIO LOGIC BLOCKS (CENTERED, STACKED VERTICALLY)        */}
+          {/* TENSE IDENTITY & KAVIO LOGIC BLOCKS (2x2 GRID CARDS)                      */}
           {/* ========================================================================= */}
-          <div className="w-full flex flex-col items-center justify-center text-center py-2 shrink-0 space-y-4">
+          <div className="w-full flex flex-col items-center justify-center text-center py-2 shrink-0 space-y-3.5">
             <motion.div
               key={`${tense}-${aspect}-${sentenceType}-${form}-${sentenceData.isPassive}`}
               initial={{ opacity: 0, y: 3 }}
@@ -1915,24 +1915,42 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
               </span>
             </motion.div>
 
-            {/* Vertically Stacked Kavio Domino Logic Blocks */}
-            <div className="flex flex-col items-center justify-center gap-3 sm:gap-4">
-              {sentenceLogicBlocks.map((block, idx) => (
-                <div
-                  key={`${block.category}-${block.formula}-${idx}`}
-                  className="flex flex-col items-center text-center"
-                >
-                  <span className="text-[10px] sm:text-[11px] font-mono font-bold tracking-widest uppercase text-blue-400/90 mb-0.5">
-                    {block.category}
-                  </span>
-                  <span className="text-base sm:text-lg font-mono font-extrabold text-white tracking-wide">
-                    {block.formula}
-                  </span>
-                  <span className="text-xs sm:text-sm font-mono text-zinc-400 italic mt-0.5">
-                    &ldquo;{block.realization}&rdquo;
-                  </span>
-                </div>
-              ))}
+            {/* 2x2 Grid: Active Cards & Empty Cards */}
+            <div className="w-full max-w-sm sm:max-w-md grid grid-cols-2 gap-2.5 sm:gap-3 mx-auto">
+              {[0, 1, 2, 3].map((index) => {
+                const block = sentenceLogicBlocks[index];
+                if (block) {
+                  return (
+                    <motion.div
+                      key={`${block.category}-${block.formula}-${index}`}
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.18 }}
+                      className="flex flex-col items-center justify-center text-center p-2.5 sm:p-3 rounded-xl bg-[#141724] border border-zinc-700/80 shadow-md min-h-[82px] sm:min-h-[90px]"
+                    >
+                      <span className="text-[10px] sm:text-[11px] font-mono font-bold tracking-widest uppercase text-blue-400 mb-0.5">
+                        {block.category}
+                      </span>
+                      <span className="text-sm sm:text-base font-mono font-extrabold text-white tracking-wide">
+                        {block.formula}
+                      </span>
+                      <span className="text-xs sm:text-sm font-mono text-zinc-400 italic mt-0.5 truncate max-w-full px-1">
+                        &ldquo;{block.realization}&rdquo;
+                      </span>
+                    </motion.div>
+                  );
+                }
+                return (
+                  <div
+                    key={`empty-${index}`}
+                    className="flex flex-col items-center justify-center text-center p-2.5 sm:p-3 rounded-xl bg-[#11131c]/30 border border-dashed border-zinc-800/70 min-h-[82px] sm:min-h-[90px]"
+                  >
+                    <span className="text-xs font-mono text-zinc-700/80 select-none">
+                      —
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
