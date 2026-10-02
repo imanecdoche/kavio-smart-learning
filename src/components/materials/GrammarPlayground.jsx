@@ -1916,17 +1916,6 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
         </div>
       </main>
 
-      {/* Bottom Footer Info Strip */}
-      <footer className="px-5 md:px-8 pt-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-[#090a0f]/95 backdrop-blur-md border-t border-[#232736]/40 flex items-center justify-between shrink-0 z-40 text-xs text-zinc-500">
-        <span>Gunakan playground ini untuk memverifikasi seluruh aturan tata bahasa A1.</span>
-        <button
-          type="button"
-          onClick={onBack}
-          className="text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors border-0 bg-transparent cursor-pointer p-0"
-        >
-          Kembali ke Kurikulum
-        </button>
-      </footer>
     </div>
   );
 };
