@@ -932,20 +932,10 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
       <main className="flex-1 w-full overflow-y-auto overflow-x-hidden relative">
         <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 md:px-8 pt-4 pb-12 flex flex-col items-center gap-2.5 sm:gap-3">
           {/* ========================================================================= */}
-          {/* TOP SECTION: ENGINE STRIP, SENTENCE PREVIEW & MINIMALIST ICONS            */}
+          {/* TOP SECTION: SENTENCE PREVIEW & MINIMALIST ICONS                          */}
           {/* ========================================================================= */}
           <div className="w-full flex flex-col items-center shrink-0 space-y-2.5">
-            {/* 1. Grammar Engine Explanation Strip - Posisi Paling Atas */}
-            <div className="w-full bg-[#141622] rounded-xl px-3.5 py-1.5 text-[11px] sm:text-xs text-zinc-300 flex items-center gap-2 text-left relative z-0">
-              <span className="w-3.5 h-3.5 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-[9px] shrink-0 border-0">
-                ⓘ
-              </span>
-              <p className="line-clamp-1 flex-1">
-                <strong className="text-zinc-400">Logika Mesin:</strong> {grammarExplanation}
-              </p>
-            </div>
-
-            {/* 2. Main Sentence Preview Canvas (Pure Floating Canvas, Center-Aligned, No Box/Card) */}
+            {/* Main Sentence Preview Canvas (Pure Floating Canvas, Center-Aligned, No Box/Card) */}
             <div className="w-full py-2.5 sm:py-3.5 flex flex-col items-center justify-center relative z-20 overflow-visible min-h-[4rem] sm:min-h-[4.5rem]">
               <motion.div
                 layout="position"
