@@ -1,15 +1,24 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { UserCheck } from 'lucide-react';
 import Button from '../ui/Button';
 import { useAuth } from '../../context/AuthContext';
 
 export const LoginPage = () => {
-  const { login, register, offlineLogin, authError } = useAuth();
+  const { login, register, loginAsGuest, offlineLogin, authError } = useAuth();
   const [isRegister, setIsRegister] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleGuestEntry = () => {
+    if (loginAsGuest) {
+      loginAsGuest();
+    } else if (offlineLogin) {
+      offlineLogin();
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -116,6 +125,23 @@ export const LoginPage = () => {
                 : 'Sign In'}
             </Button>
 
+            <div className="relative flex items-center justify-center my-0.5">
+              <div className="border-t border-zinc-800 w-full" />
+              <span className="bg-[#090a0f] px-3 text-[11px] text-zinc-500 uppercase tracking-wider font-mono">
+                atau
+              </span>
+            </div>
+
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleGuestEntry}
+              className="w-full h-11 border border-zinc-700/80 bg-[#161824] hover:bg-[#1f2233] text-zinc-200 flex items-center justify-center gap-2 cursor-pointer font-medium"
+            >
+              <UserCheck className="w-4 h-4 text-emerald-400" />
+              <span>Masuk sebagai Tamu (Guest Login)</span>
+            </Button>
+
             <Button
               type="button"
               variant="text"
@@ -128,26 +154,6 @@ export const LoginPage = () => {
             </Button>
           </div>
         </form>
-
-        {/* Separator */}
-        <div className="relative my-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-zinc-700"></div>
-          </div>
-          <div className="relative flex justify-center text-xs">
-            <span className="px-2 bg-[#090a0f] text-zinc-500">or</span>
-          </div>
-        </div>
-
-        {/* Offline Button */}
-        <Button
-          type="button"
-          variant="outline"
-          onClick={offlineLogin}
-          className="w-full h-11 text-zinc-300 hover:text-white hover:bg-zinc-800/50 text-sm font-medium"
-        >
-          OFFLINE
-        </Button>
       </motion.div>
     </section>
   );

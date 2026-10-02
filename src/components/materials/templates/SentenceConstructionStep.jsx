@@ -31,9 +31,9 @@ export default function SentenceConstructionStep({
               animate={{ opacity: 1, width: 'auto' }}
               exit={{ opacity: 0, width: 0 }}
               transition={{ duration: 0.4, ease: [0.85, 0, 0.15, 1] }}
-              className="inline-flex items-baseline overflow-hidden"
+              className="inline-flex items-baseline overflow-hidden py-1 -my-1"
             >
-              <div className="inline-flex overflow-hidden relative h-[1.25em] items-baseline min-w-max">
+              <div className="inline-flex overflow-hidden relative h-[1.4em] items-baseline min-w-max pb-1 -mb-1">
                 <AnimatePresence mode="popLayout" initial={false}>
                   <motion.span
                     key={token.text}

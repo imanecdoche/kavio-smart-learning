@@ -55,7 +55,25 @@ export const ProfileSettingsPage = ({ onBack }) => {
         }
       }
 
-      // 2. Fetch prefs from Appwrite
+      // 2. Fetch prefs from local guest or Appwrite
+      if (user?.isGuest) {
+        const prefs = user.preferences || {};
+        if (prefs.username) setUsername(prefs.username);
+        if (prefs.bio) setBio(prefs.bio);
+        if (prefs.dob) setDob(prefs.dob);
+        if (prefs.phone) setPhone(prefs.phone);
+        if (prefs.statusNote) setStatusNote(prefs.statusNote);
+        if (prefs.avatarUrl && !localStorage.getItem(`kavio_avatar_${user.$id}`)) {
+          setAvatarUrl(prefs.avatarUrl);
+        }
+        if (prefs.socials) {
+          try {
+            setSocials(typeof prefs.socials === 'string' ? JSON.parse(prefs.socials) : prefs.socials);
+          } catch {}
+        }
+        return;
+      }
+
       try {
         const prefs = await account.getPrefs();
         if (prefs && typeof prefs === 'object') {
@@ -183,6 +201,39 @@ export const ProfileSettingsPage = ({ onBack }) => {
         takenUsernames[cleanUsername] = user.$id;
         localStorage.setItem('kavio_registered_usernames', JSON.stringify(takenUsernames));
       }
+    }
+
+    // Guest mode: save locally without network calls
+    if (user?.isGuest) {
+      try {
+        const updatedPrefs = {
+          username: cleanUsername || '',
+          bio: (bio || '').slice(0, 500),
+          dob: dob || '',
+          phone: phone || '',
+          statusNote: (statusNote || '').slice(0, 60),
+          socials: JSON.stringify(socials || {}),
+          avatarUrl: avatarUrl || '',
+        };
+        const updatedGuest = {
+          ...user,
+          name: name.trim() || user.name,
+          preferences: updatedPrefs,
+        };
+        localStorage.setItem('kavio_guest_user', JSON.stringify(updatedGuest));
+        if (avatarUrl) {
+          localStorage.setItem(`kavio_avatar_${user.$id}`, avatarUrl);
+        }
+        if (refreshUser) {
+          await refreshUser();
+        }
+        setSaveStatus({ type: 'success', message: 'Profil tamu berhasil disimpan secara lokal!' });
+      } catch (err) {
+        setSaveStatus({ type: 'error', message: 'Gagal menyimpan profil tamu.' });
+      } finally {
+        setIsSaving(false);
+      }
+      return;
     }
 
     try {

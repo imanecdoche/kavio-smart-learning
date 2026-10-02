@@ -37,7 +37,7 @@ export default function VerbMorphingStep({
       )}
 
       {/* Area Kata Raksasa */}
-      <div className="text-6xl md:text-7xl font-extrabold tracking-tight mb-6 flex items-baseline justify-center h-[1.3em]">
+      <div className="text-6xl md:text-7xl font-extrabold tracking-tight mb-6 flex items-baseline justify-center min-h-[1.4em]">
         {isLetterLevel ? (
           <div className="inline-flex items-baseline justify-center">
             {/* Stem terkunci mati tanpa transform apa pun */}
@@ -51,7 +51,7 @@ export default function VerbMorphingStep({
                   animate={{ width: 'auto', opacity: 1 }}
                   exit={{ width: 0, opacity: 0 }}
                   transition={{ duration: 0.35, ease: [0.85, 0, 0.15, 1] }}
-                  className="inline-flex overflow-hidden whitespace-nowrap"
+                  className="inline-flex overflow-hidden whitespace-nowrap py-1 -my-1"
                 >
                   <span className={`inline-block min-w-max ${suffixColor}`}>
                     {suffix}
@@ -61,7 +61,7 @@ export default function VerbMorphingStep({
             </AnimatePresence>
           </div>
         ) : (
-          <div className="inline-flex overflow-hidden relative h-[1.25em] items-baseline justify-center">
+          <div className="inline-flex overflow-hidden relative h-[1.4em] items-baseline justify-center pb-1 -mb-1">
             <AnimatePresence mode="popLayout" initial={false}>
               <motion.span
                 key={word}

@@ -49,19 +49,16 @@ const tokenVariants = {
   initial: {
     opacity: 0,
     width: 0,
-    scale: 0.95,
     marginLeft: 0,
     marginRight: 0,
   },
   animate: (custom) => ({
     opacity: 1,
     width: 'auto',
-    scale: 1,
     marginLeft: '0.25rem',
     marginRight: '0.25rem',
     transition: {
       width: { type: 'spring', stiffness: 400, damping: 35, delay: custom?.delay || 0 },
-      scale: { type: 'spring', stiffness: 400, damping: 35, delay: custom?.delay || 0 },
       marginLeft: { type: 'spring', stiffness: 400, damping: 35, delay: custom?.delay || 0 },
       marginRight: { type: 'spring', stiffness: 400, damping: 35, delay: custom?.delay || 0 },
       opacity: { duration: 0.15, delay: custom?.delay || 0 },
@@ -70,12 +67,10 @@ const tokenVariants = {
   exit: {
     opacity: 0,
     width: 0,
-    scale: 0.95,
     marginLeft: 0,
     marginRight: 0,
     transition: {
       width: { type: 'spring', stiffness: 400, damping: 35 },
-      scale: { type: 'spring', stiffness: 400, damping: 35 },
       marginLeft: { type: 'spring', stiffness: 400, damping: 35 },
       marginRight: { type: 'spring', stiffness: 400, damping: 35 },
       opacity: { duration: 0.12 },
@@ -349,8 +344,12 @@ const SentenceTokenItem = ({
       style={{
         WebkitTouchCallout: 'none',
         userSelect: 'none',
-        lineHeight: 1,
+        lineHeight: 1.35,
         verticalAlign: 'baseline',
+        paddingTop: '0.25em',
+        paddingBottom: '0.45em',
+        marginTop: '-0.25em',
+        marginBottom: '-0.45em',
       }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
@@ -360,23 +359,23 @@ const SentenceTokenItem = ({
       onClick={handleClick}
     >
       <span
-        className={`whitespace-nowrap inline-flex items-baseline ${tokenStyle} ${
+        className={`whitespace-nowrap inline-flex items-baseline min-w-max ${tokenStyle} ${
           isOpen ? 'opacity-100 underline decoration-amber-400/60 decoration-2 underline-offset-4' : ''
         }`}
-        style={{ lineHeight: 1, verticalAlign: 'baseline' }}
+        style={{ lineHeight: 1.35, verticalAlign: 'baseline' }}
       >
         {hasStem ? (
           /* Letter-Level Morphing: Invariant Stem Locked in Place + Suffix Rolling */
           <span
             className="inline-flex items-baseline"
-            style={{ display: 'inline-flex', alignItems: 'baseline', lineHeight: 1, verticalAlign: 'baseline' }}
+            style={{ display: 'inline-flex', alignItems: 'baseline', lineHeight: 1.35, verticalAlign: 'baseline' }}
           >
             {/* 1. Stem (akar kata) terkunci mati: zero transform, zero reflow */}
             <span
               className="inline-block select-none"
-              style={{ display: 'inline-block', lineHeight: 1, verticalAlign: 'baseline' }}
+              style={{ display: 'inline-block', lineHeight: 1.35, verticalAlign: 'baseline' }}
             >{stem}</span>{/* 2. Suffix (akhiran) melakukan vertical rolling */}<motion.span
-              layout="size"
+              layout="position"
               transition={{
                 layout: { type: 'spring', stiffness: 400, damping: 35, delay: staggerDelay },
               }}
@@ -384,13 +383,13 @@ const SentenceTokenItem = ({
               style={{
                 display: 'inline-block',
                 verticalAlign: 'baseline',
-                lineHeight: 1,
+                lineHeight: 1.35,
                 position: 'relative',
                 overflow: 'hidden',
-                paddingTop: '0.15em',
-                paddingBottom: '0.15em',
-                marginTop: '-0.15em',
-                marginBottom: '-0.15em',
+                paddingTop: '0.25em',
+                paddingBottom: '0.45em',
+                marginTop: '-0.25em',
+                marginBottom: '-0.45em',
               }}
             >
               <AnimatePresence mode="popLayout" initial={false} custom={staggerDelay}>
@@ -404,7 +403,7 @@ const SentenceTokenItem = ({
                   className="inline-block"
                   style={{
                     display: 'inline-block',
-                    lineHeight: 1,
+                    lineHeight: 1.35,
                     verticalAlign: 'baseline',
                     whiteSpace: 'nowrap',
                   }}
@@ -417,7 +416,7 @@ const SentenceTokenItem = ({
         ) : (
           /* Whole Token Vertical Rolling (Slot Machine / Odometer) */
           <motion.span
-            layout="size"
+            layout="position"
             transition={{
               layout: { type: 'spring', stiffness: 400, damping: 35, delay: staggerDelay },
             }}
@@ -425,13 +424,13 @@ const SentenceTokenItem = ({
             style={{
               display: 'inline-block',
               verticalAlign: 'baseline',
-              lineHeight: 1,
+              lineHeight: 1.35,
               position: 'relative',
               overflow: 'hidden',
-              paddingTop: '0.15em',
-              paddingBottom: '0.15em',
-              marginTop: '-0.15em',
-              marginBottom: '-0.15em',
+              paddingTop: '0.25em',
+              paddingBottom: '0.45em',
+              marginTop: '-0.25em',
+              marginBottom: '-0.45em',
             }}
           >
             <AnimatePresence mode="popLayout" initial={false} custom={staggerDelay}>
@@ -445,7 +444,7 @@ const SentenceTokenItem = ({
                 className="inline-block"
                 style={{
                   display: 'inline-block',
-                  lineHeight: 1,
+                  lineHeight: 1.35,
                   verticalAlign: 'baseline',
                   whiteSpace: 'nowrap',
                 }}
@@ -459,7 +458,7 @@ const SentenceTokenItem = ({
         {punctuationMark && (
           <span
             className="text-zinc-400 select-none pointer-events-none"
-            style={{ lineHeight: 1, verticalAlign: 'baseline' }}
+            style={{ lineHeight: 1.35, verticalAlign: 'baseline' }}
           >
             {punctuationMark}
           </span>
@@ -1042,7 +1041,7 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
             >
               <LayoutGroup id="sentence-preview-stage">
                 <motion.div
-                  layout
+                  layout="position"
                   layoutRoot
                   className="inline-flex items-baseline justify-center flex-wrap gap-y-2 min-h-[3.5rem] sm:min-h-[4rem] text-2xl sm:text-3xl md:text-4xl font-mono font-bold text-center relative z-10"
                   style={{ position: 'relative', isolation: 'isolate' }}

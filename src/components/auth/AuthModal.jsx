@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { UserCheck } from 'lucide-react';
 import DialogWrapper from '../ui/DialogWrapper';
 import Button from '../ui/Button';
 import { useAuth } from '../../context/AuthContext';
@@ -10,6 +11,7 @@ export const AuthModal = () => {
     authError,
     login,
     register,
+    loginAsGuest,
     closeAuth,
     setAuthMode,
   } = useAuth();
@@ -113,6 +115,23 @@ export const AuthModal = () => {
               : isRegister
               ? 'Create Unique Account'
               : 'Sign In'}
+          </Button>
+
+          <div className="relative flex items-center justify-center my-0.5">
+            <div className="border-t border-zinc-800 w-full" />
+            <span className="bg-[#151724] px-3 text-[11px] text-zinc-500 uppercase tracking-wider font-mono">
+              atau
+            </span>
+          </div>
+
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => loginAsGuest()}
+            className="w-full border border-zinc-700/80 bg-[#1e2235] hover:bg-[#252b42] text-zinc-200 flex items-center justify-center gap-2 cursor-pointer font-medium"
+          >
+            <UserCheck className="w-4 h-4 text-emerald-400" />
+            <span>Masuk sebagai Tamu (Guest Login)</span>
           </Button>
 
           <Button
