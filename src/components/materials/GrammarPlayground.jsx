@@ -670,7 +670,8 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
 
   const punctuationMark = useMemo(() => {
     const punct = (sentenceData?.tokens || []).find((t) => t.role === 'punctuation');
-    return punct ? punct.text : '.';
+    if (!punct || punct.text === '.') return null;
+    return punct.text;
   }, [sentenceData?.tokens]);
 
 

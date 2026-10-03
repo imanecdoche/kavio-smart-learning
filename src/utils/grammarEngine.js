@@ -2253,13 +2253,15 @@ export function buildSentence({
     });
   }
 
-  // Tambahkan tanda baca
-  const punctuation = form === 'question' || isNegativeQuestion ? '?' : '.';
-  tokens.push({
-    id: 'token-punct',
-    text: punctuation,
-    role: 'punctuation',
-  });
+  // Tambahkan tanda baca (titik ditiadakan di akhir kalimat, tanda tanya tetap untuk pertanyaan)
+  const punctuation = form === 'question' || isNegativeQuestion ? '?' : '';
+  if (punctuation) {
+    tokens.push({
+      id: 'token-punct',
+      text: punctuation,
+      role: 'punctuation',
+    });
+  }
 
   const indonesianTranslation = getIndonesianTranslation({
     subject: cleanSubject,
