@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X } from 'lucide-react';
+import { X, BookOpen, RotateCw, Sliders, LayoutGrid } from 'lucide-react';
+import { TenseExplanationModal } from './TenseExplanationModal';
 import {
   buildSentence,
   detectSubjectType,
@@ -487,7 +488,13 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
   const [showNominalSuggestions, setShowNominalSuggestions] = useState(false);
   const [openPicker, setOpenPicker] = useState(null); // 'timeSignal' | 'subject' | 'predicate' | 'object' | null
   const [selectedBlockIndex, setSelectedBlockIndex] = useState(null);
+  const [showTenseModal, setShowTenseModal] = useState(false);
+  const [isLandscapeMode, setIsLandscapeMode] = useState(false);
+  const [isRightDrawerOpen, setIsRightDrawerOpen] = useState(false);
+  const [isLeftDrawerOpen, setIsLeftDrawerOpen] = useState(false);
   const pickerContainerRef = useRef(null);
+  const touchStartXRef = useRef(null);
+  const touchStartYRef = useRef(null);
 
   // Menerapkan konfigurasi preset dari modul pembelajaran (misal dari CTA Unit 3 Prepositions)
   useEffect(() => {
@@ -719,6 +726,57 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
+
+  // Handle touch gesture untuk Landscape mode (Swipe Left: Buka Panel Kanan, Swipe Right: Buka Sheet Kiri)
+  const handleLandscapeTouchStart = (e) => {
+    if (!isLandscapeMode) return;
+    const touch = e.touches[0];
+    touchStartXRef.current = touch.clientX;
+    touchStartYRef.current = touch.clientY;
+  };
+
+  const handleLandscapeTouchEnd = (e) => {
+    if (!isLandscapeMode || touchStartXRef.current === null) return;
+    const touch = e.changedTouches[0];
+    const diffX = touch.clientX - touchStartXRef.current;
+    const diffY = touch.clientY - touchStartYRef.current;
+
+    // Geser horizontal dominan dengan threshold minimal 40px
+    if (Math.abs(diffX) > 40 && Math.abs(diffX) > Math.abs(diffY) * 1.3) {
+      if (diffX < 0) {
+        // Swipe Left: Buka panel kontrol di kanan layar (atau tutup sheet kiri jika terbuka)
+        if (isLeftDrawerOpen) {
+          setIsLeftDrawerOpen(false);
+        } else {
+          setIsRightDrawerOpen(true);
+          setIsLeftDrawerOpen(false);
+        }
+      } else {
+        // Swipe Right: Buka sheet panel blok-blok dari kiri (atau tutup drawer kanan jika terbuka)
+        if (isRightDrawerOpen) {
+          setIsRightDrawerOpen(false);
+        } else {
+          setIsLeftDrawerOpen(true);
+          setIsRightDrawerOpen(false);
+        }
+      }
+    }
+    touchStartXRef.current = null;
+    touchStartYRef.current = null;
+  };
+
+  // Tutup drawer dengan tombol Escape saat dalam mode Landscape
+  useEffect(() => {
+    if (!isLandscapeMode) return;
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        setIsRightDrawerOpen(false);
+        setIsLeftDrawerOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isLandscapeMode]);
 
   const subjectType = useMemo(() => {
     return detectSubjectType(activeSubject);
@@ -1081,8 +1139,82 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
     );
   }
 
+  // Komponen Form Switcher Minimalist (+, -, ?, -?)
+  const formSwitcherBar = (
+    <div className="flex items-center justify-center gap-5 sm:gap-7 py-0.5">
+      <button
+        type="button"
+        onClick={() => setForm('positive')}
+        title="Bentuk Positif (+)"
+        aria-label="Positif"
+        className={`p-1.5 transition-all duration-200 border-0 bg-transparent cursor-pointer flex items-center justify-center ${
+          form === 'positive'
+            ? 'text-blue-400 drop-shadow-[0_0_10px_rgba(96,165,250,0.8)] scale-110'
+            : 'text-zinc-600 hover:text-zinc-300 scale-100 hover:scale-105'
+        }`}
+      >
+        <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        </svg>
+      </button>
+
+      <button
+        type="button"
+        onClick={() => setForm('negative')}
+        title="Bentuk Negatif (-)"
+        aria-label="Negatif"
+        className={`p-1.5 transition-all duration-200 border-0 bg-transparent cursor-pointer flex items-center justify-center ${
+          form === 'negative'
+            ? 'text-red-400 drop-shadow-[0_0_10px_rgba(248,113,113,0.8)] scale-110'
+            : 'text-zinc-600 hover:text-zinc-300 scale-100 hover:scale-105'
+        }`}
+      >
+        <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />
+        </svg>
+      </button>
+
+      <button
+        type="button"
+        onClick={() => setForm('question')}
+        title="Bentuk Tanya (?)"
+        aria-label="Tanya"
+        className={`p-1.5 transition-all duration-200 border-0 bg-transparent cursor-pointer flex items-center justify-center ${
+          form === 'question'
+            ? 'text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.8)] scale-110'
+            : 'text-zinc-600 hover:text-zinc-300 scale-100 hover:scale-105'
+        }`}
+      >
+        <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M12 18h.01" />
+        </svg>
+      </button>
+
+      <button
+        type="button"
+        onClick={() => setForm('negative_question')}
+        title="Bentuk Tanya Negatif (-?)"
+        aria-label="Tanya Negatif"
+        className={`p-1.5 transition-all duration-200 border-0 bg-transparent cursor-pointer flex items-center justify-center ${
+          form === 'negative_question'
+            ? 'text-rose-400 drop-shadow-[0_0_10px_rgba(251,113,133,0.8)] scale-110'
+            : 'text-zinc-600 hover:text-zinc-300 scale-100 hover:scale-105'
+        }`}
+      >
+        <svg className="w-7 h-6 sm:w-8 sm:h-7" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 28 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 12h7" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M14.5 8c0-1.8 1.4-3 3.3-3 1.9 0 3.2 1.2 3.2 2.8 0 1.5-1 2.3-2.1 3.1-.9.7-1.4 1.3-1.4 2.6v.5M17.5 18h.01" />
+        </svg>
+      </button>
+    </div>
+  );
+
   return (
-    <div className="h-[100dvh] w-full bg-[#090a0f] text-zinc-100 select-none overflow-hidden flex flex-col justify-between">
+    <div
+      onTouchStart={handleLandscapeTouchStart}
+      onTouchEnd={handleLandscapeTouchEnd}
+      className="h-[100dvh] w-full bg-[#090a0f] text-zinc-100 select-none overflow-hidden flex flex-col justify-between relative"
+    >
       {/* Top Header Bar */}
       <header className="px-5 md:px-8 pt-[max(0.75rem,env(safe-area-inset-top))] pb-2.5 flex items-center justify-between shrink-0 z-40 bg-[#090a0f]/95 backdrop-blur-md border-b border-[#232736]/40">
         <div className="flex items-center gap-3">
@@ -1103,21 +1235,59 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
           </span>
         </div>
 
-        <button
-          type="button"
-          onClick={handleReset}
-          className="h-7 px-3 rounded-lg bg-[#181a24] hover:bg-[#202330] text-zinc-400 hover:text-white text-xs font-medium transition-colors border-0 cursor-pointer flex items-center gap-1.5"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          <span>Reset</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Tombol Rotate (Icon Only) */}
+          <button
+            type="button"
+            onClick={() => {
+              setIsLandscapeMode((prev) => !prev);
+              setIsRightDrawerOpen(false);
+              setIsLeftDrawerOpen(false);
+            }}
+            title={isLandscapeMode ? 'Kembali ke Mode Normal (Portrait)' : 'Aktifkan Mode Landscape'}
+            aria-label={isLandscapeMode ? 'Mode Normal' : 'Mode Landscape'}
+            className={`h-7 w-7 rounded-lg transition-all duration-200 border-0 cursor-pointer flex items-center justify-center ${
+              isLandscapeMode
+                ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 ring-1 ring-blue-400'
+                : 'bg-[#181a24] hover:bg-[#202330] text-zinc-400 hover:text-white'
+            }`}
+          >
+            <RotateCw
+              className={`w-3.5 h-3.5 transition-transform duration-300 ${
+                isLandscapeMode ? 'rotate-90' : ''
+              }`}
+            />
+          </button>
+
+          {/* Tombol Reset */}
+          <button
+            type="button"
+            onClick={handleReset}
+            className="h-7 px-3 rounded-lg bg-[#181a24] hover:bg-[#202330] text-zinc-400 hover:text-white text-xs font-medium transition-colors border-0 cursor-pointer flex items-center gap-1.5"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span>Reset</span>
+          </button>
+        </div>
       </header>
 
       {/* Main Container - Expanded Width (max-w-6xl w-full) & Scrollable */}
-      <main className="flex-1 w-full overflow-y-auto overflow-x-hidden relative">
-        <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 md:px-8 pt-4 pb-12 flex flex-col items-center gap-2.5 sm:gap-3">
+      <main
+        onTouchStart={handleLandscapeTouchStart}
+        onTouchEnd={handleLandscapeTouchEnd}
+        className={`flex-1 w-full overflow-y-auto overflow-x-hidden relative ${
+          isLandscapeMode ? 'flex flex-col items-center justify-center p-4 min-h-0' : ''
+        }`}
+      >
+        <div
+          className={`w-full max-w-6xl mx-auto px-4 sm:px-6 md:px-8 ${
+            isLandscapeMode
+              ? 'flex-1 flex flex-col items-center justify-center my-auto py-6'
+              : 'pt-4 pb-12 flex flex-col items-center gap-2.5 sm:gap-3'
+          }`}
+        >
           {/* ========================================================================= */}
           {/* TOP SECTION: SENTENCE PREVIEW & MINIMALIST ICONS                          */}
           {/* ========================================================================= */}
@@ -1191,7 +1361,7 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
               </motion.div>
 
               {/* Dedicated Translation Slot (Reserved 3rd Block to Prevent Layout Shift) */}
-              <div className="w-full h-6 sm:h-7 mt-1.5 flex items-center justify-center px-4 overflow-hidden select-none">
+              <div className={`w-full ${isLandscapeMode ? 'h-8 sm:h-9 mt-3' : 'h-6 sm:h-7 mt-1.5'} flex items-center justify-center px-4 overflow-hidden select-none`}>
                 <AnimatePresence mode="wait">
                   {showTranslation && sentenceData.translation ? (
                     <motion.div
@@ -1200,7 +1370,11 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -2 }}
                       transition={{ duration: 0.15 }}
-                      className="text-xs sm:text-sm md:text-base font-sans italic text-zinc-400 font-normal tracking-wide text-center truncate max-w-full"
+                      className={`${
+                        isLandscapeMode
+                          ? 'text-sm sm:text-base md:text-lg text-zinc-300'
+                          : 'text-xs sm:text-sm md:text-base text-zinc-400'
+                      } font-sans italic font-normal tracking-wide text-center truncate max-w-full`}
                     >
                       &ldquo;{sentenceData.translation}&rdquo;
                     </motion.div>
@@ -1209,81 +1383,65 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
               </div>
             </div>
 
-            {/* 3. Form Switcher Bar: Minimalist Icons (+, -, ?, -?) */}
-            <div className="flex items-center justify-center gap-5 sm:gap-7 py-0.5">
-              <button
-                type="button"
-                onClick={() => setForm('positive')}
-                title="Bentuk Positif (+)"
-                aria-label="Positif"
-                className={`p-1.5 transition-all duration-200 border-0 bg-transparent cursor-pointer flex items-center justify-center ${
-                  form === 'positive'
-                    ? 'text-blue-400 drop-shadow-[0_0_10px_rgba(96,165,250,0.8)] scale-110'
-                    : 'text-zinc-600 hover:text-zinc-300 scale-100 hover:scale-105'
-                }`}
-              >
-                <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setForm('negative')}
-                title="Bentuk Negatif (-)"
-                aria-label="Negatif"
-                className={`p-1.5 transition-all duration-200 border-0 bg-transparent cursor-pointer flex items-center justify-center ${
-                  form === 'negative'
-                    ? 'text-red-400 drop-shadow-[0_0_10px_rgba(248,113,113,0.8)] scale-110'
-                    : 'text-zinc-600 hover:text-zinc-300 scale-100 hover:scale-105'
-                }`}
-              >
-                <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />
-                </svg>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setForm('question')}
-                title="Bentuk Tanya (?)"
-                aria-label="Tanya"
-                className={`p-1.5 transition-all duration-200 border-0 bg-transparent cursor-pointer flex items-center justify-center ${
-                  form === 'question'
-                    ? 'text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.8)] scale-110'
-                    : 'text-zinc-600 hover:text-zinc-300 scale-100 hover:scale-105'
-                }`}
-              >
-                <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M12 18h.01" />
-                </svg>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setForm('negative_question')}
-                title="Bentuk Tanya Negatif (-?)"
-                aria-label="Tanya Negatif"
-                className={`p-1.5 transition-all duration-200 border-0 bg-transparent cursor-pointer flex items-center justify-center ${
-                  form === 'negative_question'
-                    ? 'text-rose-400 drop-shadow-[0_0_10px_rgba(251,113,133,0.8)] scale-110'
-                    : 'text-zinc-600 hover:text-zinc-300 scale-100 hover:scale-105'
-                }`}
-              >
-                <svg className="w-7 h-6 sm:w-8 sm:h-7" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 28 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 12h7" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.5 8c0-1.8 1.4-3 3.3-3 1.9 0 3.2 1.2 3.2 2.8 0 1.5-1 2.3-2.1 3.1-.9.7-1.4 1.3-1.4 2.6v.5M17.5 18h.01" />
-                </svg>
-              </button>
-            </div>
+            {/* 3. Form Switcher Bar: Minimalist Icons (+, -, ?, -?) - Hanya di flow utama saat Mode Portrait */}
+            {!isLandscapeMode && formSwitcherBar}
           </div>
 
           {/* ========================================================================= */}
           {/* BOTTOM SECTION: RESTRUCTURED 3-ROW CONTROL CONSOLE                        */}
+          {/* (Portrait: Normal page flow; Landscape: Right Drawer slide-out)          */}
           {/* ========================================================================= */}
-          <div className="w-full bg-[#11131c] rounded-2xl p-3.5 sm:p-4 space-y-3 text-left shrink-0">
-            {/* ROW 1: Fixed 1-Row Horizontal Main Controls (Mode | Pasif | Waktu Utama | Aspek Waktu) */}
-            <div className="flex items-center justify-between gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
+          <div
+            onTouchStart={isLandscapeMode ? (e) => e.stopPropagation() : undefined}
+            onTouchEnd={isLandscapeMode ? (e) => e.stopPropagation() : undefined}
+            className={
+              isLandscapeMode
+                ? `fixed top-0 right-0 bottom-0 z-50 w-full max-w-sm sm:max-w-md md:max-w-lg bg-[#0e101a] border-l border-zinc-800 shadow-2xl flex flex-col overflow-hidden transition-transform duration-300 ease-out ${
+                    isRightDrawerOpen ? 'translate-x-0' : 'translate-x-full pointer-events-none'
+                  }`
+                : 'w-full bg-[#11131c] rounded-2xl p-3.5 sm:p-4 space-y-3 text-left shrink-0'
+            }
+          >
+            {/* Header Drawer (Khusus Landscape Mode) */}
+            {isLandscapeMode && (
+              <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800/80 bg-[#121420] shrink-0">
+                <div className="flex items-center gap-2">
+                  <Sliders className="w-4 h-4 text-blue-400" />
+                  <span className="text-sm font-semibold font-mono text-zinc-200">Panel Konfigurasi</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsRightDrawerOpen(false)}
+                  className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors border-0 bg-transparent cursor-pointer flex items-center justify-center"
+                  aria-label="Tutup Panel"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            )}
+
+            <div
+              data-lenis-prevent={isLandscapeMode ? 'true' : undefined}
+              className={
+                isLandscapeMode
+                  ? 'flex-1 overflow-y-auto p-4 space-y-3 text-left w-full overscroll-contain'
+                  : 'contents'
+              }
+              style={
+                isLandscapeMode
+                  ? { WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }
+                  : undefined
+              }
+            >
+              {/* Form Switcher Bar (+, -, ?, -?) - Tampil di Drawer saat Landscape Mode */}
+              {isLandscapeMode && (
+                <div className="w-full py-2 px-3 bg-[#151726] rounded-xl flex items-center justify-center border border-zinc-800/80 mb-1">
+                  {formSwitcherBar}
+                </div>
+              )}
+
+              {/* ROW 1: Fixed 1-Row Horizontal Main Controls (Mode | Pasif | Waktu Utama | Aspek Waktu) */}
+              <div className="flex items-center justify-between gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
               {/* Mode Switcher */}
               <div className="inline-flex rounded-lg bg-[#181b28] p-0.5 shrink-0 h-9">
                 <button
@@ -1447,7 +1605,11 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
                 <AnimatePresence>
                   {openPicker === 'timeSignal' && (
                     <div
-                      className="max-md:fixed max-md:inset-0 max-md:z-50 max-md:bg-black/80 max-md:backdrop-blur-sm max-md:flex max-md:items-center max-md:justify-center max-md:p-4 md:absolute md:inset-auto md:bottom-full md:mb-2 md:left-0 md:z-50 md:block"
+                      className={
+                        isLandscapeMode
+                          ? 'fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4'
+                          : 'max-md:fixed max-md:inset-0 max-md:z-50 max-md:bg-black/80 max-md:backdrop-blur-sm max-md:flex max-md:items-center max-md:justify-center max-md:p-4 md:absolute md:inset-auto md:bottom-full md:mb-2 md:left-0 md:z-50 md:block'
+                      }
                       onClick={() => setOpenPicker(null)}
                     >
                       <motion.div
@@ -1565,7 +1727,11 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
                 <AnimatePresence>
                   {openPicker === 'subject' && (
                     <div
-                      className="max-md:fixed max-md:inset-0 max-md:z-50 max-md:bg-black/80 max-md:backdrop-blur-sm max-md:flex max-md:items-center max-md:justify-center max-md:p-4 md:absolute md:inset-auto md:bottom-full md:mb-2 md:left-0 md:z-50 md:block"
+                      className={
+                        isLandscapeMode
+                          ? 'fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4'
+                          : 'max-md:fixed max-md:inset-0 max-md:z-50 max-md:bg-black/80 max-md:backdrop-blur-sm max-md:flex max-md:items-center max-md:justify-center max-md:p-4 md:absolute md:inset-auto md:bottom-full md:mb-2 md:left-0 md:z-50 md:block'
+                      }
                       onClick={() => setOpenPicker(null)}
                     >
                       <motion.div
@@ -1681,7 +1847,11 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
                 <AnimatePresence>
                   {openPicker === 'predicate' && (
                     <div
-                      className="max-md:fixed max-md:inset-0 max-md:z-50 max-md:bg-black/80 max-md:backdrop-blur-sm max-md:flex max-md:items-center max-md:justify-center max-md:p-4 md:absolute md:inset-auto md:bottom-full md:mb-2 md:left-0 md:z-50 md:block"
+                      className={
+                        isLandscapeMode
+                          ? 'fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4'
+                          : 'max-md:fixed max-md:inset-0 max-md:z-50 max-md:bg-black/80 max-md:backdrop-blur-sm max-md:flex max-md:items-center max-md:justify-center max-md:p-4 md:absolute md:inset-auto md:bottom-full md:mb-2 md:left-0 md:z-50 md:block'
+                      }
                       onClick={() => setOpenPicker(null)}
                     >
                       <motion.div
@@ -1965,7 +2135,11 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
                     <AnimatePresence>
                       {openPicker === 'object' && (
                         <div
-                          className="max-md:fixed max-md:inset-0 max-md:z-50 max-md:bg-black/80 max-md:backdrop-blur-sm max-md:flex max-md:items-center max-md:justify-center max-md:p-4 md:absolute md:inset-auto md:bottom-full md:mb-2 md:right-0 md:z-50 md:block"
+                          className={
+                            isLandscapeMode
+                              ? 'fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4'
+                              : 'max-md:fixed max-md:inset-0 max-md:z-50 max-md:bg-black/80 max-md:backdrop-blur-sm max-md:flex max-md:items-center max-md:justify-center max-md:p-4 md:absolute md:inset-auto md:bottom-full md:mb-2 md:right-0 md:z-50 md:block'
+                          }
                           onClick={() => setOpenPicker(null)}
                         >
                           <motion.div
@@ -2114,20 +2288,70 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
               </label>
             </div>
           </div>
+        </div>
 
-          {/* ========================================================================= */}
-          {/* TENSE IDENTITY & KAVIO LOGIC BLOCKS (2x2 GRID CARDS)                      */}
-          {/* ========================================================================= */}
-          <div className="w-full flex flex-col items-center justify-center text-center py-2 shrink-0 space-y-3.5">
+        {/* ========================================================================= */}
+        {/* TENSE IDENTITY & KAVIO LOGIC BLOCKS (2x2 GRID CARDS)                      */}
+        {/* (Portrait: Normal page flow; Landscape: Left Drawer/Sheet slide-out)      */}
+        {/* ========================================================================= */}
+        <div
+          onTouchStart={isLandscapeMode ? (e) => e.stopPropagation() : undefined}
+          onTouchEnd={isLandscapeMode ? (e) => e.stopPropagation() : undefined}
+          className={
+            isLandscapeMode
+              ? `fixed top-0 left-0 bottom-0 z-50 w-full max-w-sm sm:max-w-md bg-[#0e101a] border-r border-zinc-800 shadow-2xl flex flex-col overflow-hidden transition-transform duration-300 ease-out ${
+                  isLeftDrawerOpen ? 'translate-x-0' : '-translate-x-full pointer-events-none'
+                }`
+              : 'w-full flex flex-col items-center justify-center text-center py-2 shrink-0 space-y-3.5'
+          }
+        >
+          {/* Sheet Header (Khusus Landscape Mode) */}
+          {isLandscapeMode && (
+            <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800/80 bg-[#121420] shrink-0 w-full">
+              <div className="flex items-center gap-2">
+                <LayoutGrid className="w-4 h-4 text-amber-400" />
+                <span className="text-sm font-semibold font-mono text-zinc-200">Sheet Blok Tenses</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsLeftDrawerOpen(false)}
+                className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors border-0 bg-transparent cursor-pointer flex items-center justify-center"
+                aria-label="Tutup Sheet"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          )}
+
+          <div
+            data-lenis-prevent={isLandscapeMode ? 'true' : undefined}
+            className={
+              isLandscapeMode
+                ? 'flex-1 overflow-y-auto p-4 flex flex-col items-center justify-start space-y-3.5 w-full text-center overscroll-contain'
+                : 'contents'
+            }
+            style={
+              isLandscapeMode
+                ? { WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }
+                : undefined
+            }
+          >
             <motion.div
               key={`${tense}-${aspect}-${sentenceType}-${form}-${sentenceData.isPassive}`}
               initial={{ opacity: 0, y: 3 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.18 }}
             >
-              <span className="text-xs sm:text-sm font-semibold text-zinc-300 tracking-wide">
-                {tenseFormulaInfo.name}
-              </span>
+              <button
+                type="button"
+                onClick={() => setShowTenseModal(true)}
+                title="Buka penjelasan lengkap fungsi tenses dan contohnya"
+                aria-haspopup="dialog"
+                className="group inline-flex items-center gap-1.5 px-3 py-1 rounded-xl border border-transparent hover:border-zinc-700/80 hover:bg-[#141724] active:scale-[0.98] transition-all duration-200 cursor-pointer select-none text-xs sm:text-sm font-semibold text-zinc-300 hover:text-white"
+              >
+                <span>{tenseFormulaInfo.name}</span>
+                <BookOpen className="w-3.5 h-3.5 text-zinc-500 group-hover:text-blue-400 transition-colors shrink-0" />
+              </button>
             </motion.div>
 
             {/* Single-Line TIME Card (PAST, PRESENT, FUTURE) */}
@@ -2349,8 +2573,72 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
             </div>
           </div>
         </div>
-      </main>
+      </div>
+    </main>
 
+    {/* Floating Action Buttons in Landscape Mode */}
+    {isLandscapeMode && (
+      <>
+        {/* Tombol Buka Sheet Blok Tenses (Bottom-Left) */}
+        <button
+          type="button"
+          onClick={() => {
+            setIsLeftDrawerOpen(true);
+            setIsRightDrawerOpen(false);
+          }}
+          title="Buka Sheet Blok Tenses (Swipe Right)"
+          aria-label="Sheet Blok Tenses"
+          className="fixed bottom-5 left-5 z-40 h-11 w-11 rounded-full bg-[#181b28]/95 hover:bg-[#202436] active:scale-95 text-zinc-300 hover:text-white border border-zinc-700/80 shadow-xl shadow-black/50 backdrop-blur-sm flex items-center justify-center transition-all duration-200 cursor-pointer"
+        >
+          <LayoutGrid className="w-5 h-5 text-amber-400" />
+        </button>
+
+        {/* Tombol Buka Panel Konfigurasi (Bottom-Right) */}
+        <button
+          type="button"
+          onClick={() => {
+            setIsRightDrawerOpen(true);
+            setIsLeftDrawerOpen(false);
+          }}
+          title="Buka Panel Konfigurasi (Swipe Left)"
+          aria-label="Panel Konfigurasi"
+          className="fixed bottom-5 right-5 z-40 h-11 w-11 rounded-full bg-blue-600/95 hover:bg-blue-500 active:scale-95 text-white shadow-xl shadow-blue-600/40 backdrop-blur-sm flex items-center justify-center transition-all duration-200 border-0 cursor-pointer"
+        >
+          <Sliders className="w-5 h-5" />
+        </button>
+      </>
+    )}
+
+    {/* Backdrops for Drawers in Landscape Mode */}
+    <AnimatePresence>
+      {isLandscapeMode && (isRightDrawerOpen || isLeftDrawerOpen) && (
+        <motion.div
+          key="landscape-drawer-backdrop"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          onClick={() => {
+            setIsRightDrawerOpen(false);
+            setIsLeftDrawerOpen(false);
+          }}
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm cursor-pointer"
+          aria-hidden="true"
+        />
+      )}
+    </AnimatePresence>
+
+      {/* Fullscreen Tense Explanation Modal */}
+      <TenseExplanationModal
+        isOpen={showTenseModal}
+        onClose={() => setShowTenseModal(false)}
+        tense={tense}
+        aspect={aspect}
+        sentenceType={sentenceType}
+        isPassive={isPassive}
+        form={form}
+        formulaInfo={tenseFormulaInfo}
+      />
     </div>
   );
 };
