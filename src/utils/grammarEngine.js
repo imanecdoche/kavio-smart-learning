@@ -365,6 +365,16 @@ export const PRONOUN_CONTRACTIONS = {
     she: "She'll",
     it: "It'll",
   },
+  // Past Future modal would
+  would: {
+    i: "I'd",
+    you: "You'd",
+    we: "We'd",
+    they: "They'd",
+    he: "He'd",
+    she: "She'd",
+    it: "It'd",
+  },
   // Perfect have / has
   have: {
     i: "I've",
@@ -586,6 +596,22 @@ export const TIME_SIGNAL_TRANSLATIONS = {
   'since then': 'sejak saat itu',
   'for years before': 'selama bertahun-tahun sebelumnya',
   'all along': 'sepanjang waktu',
+  'the next day': 'hari berikutnya',
+  'the day after': 'sehari setelahnya',
+  'in that year': 'pada tahun itu',
+  'then': 'kemudian',
+  'when he arrived': 'ketika dia tiba',
+  'on that day': 'pada hari itu',
+  'at 7 PM that day': 'pada jam 7 malam hari itu',
+  'by that time': 'menjelang waktu itu',
+  'by the following week': 'menjelang minggu berikutnya',
+  'before then': 'sebelum saat itu',
+  'for 2 hours by then': 'selama 2 jam menjelang saat itu',
+  'all that day': 'sepanjang hari itu',
+  'since that morning': 'sejak pagi itu',
+  'someday back then': 'suatu hari di masa itu',
+  'by the following year': 'menjelang tahun berikutnya',
+  'for years by then': 'selama bertahun-tahun saat itu',
 };
 
 export function translateSubject(subj) {
@@ -719,8 +745,8 @@ export function getIndonesianTranslation({
 
   const defaultNegWord = isNounComplement ? 'bukan' : 'tidak';
 
-  // Future
-  if (tense === 'FUTURE') {
+  // Future & Past Future
+  if (tense === 'FUTURE' || tense === 'PAST_FUTURE') {
     if (aspect === 'CONTINUOUS') {
       aspectMarker = 'akan sedang';
     } else if (aspect === 'PERFECT') {
@@ -993,8 +1019,11 @@ export function attachTokenTooltips(tokens, context) {
       }
 
       case 'helper-modal': {
-        tooltipTitle = 'Modal Auxiliary (will)';
-        tooltipDescription = 'Kata kerja bantu modal untuk menyatakan kepastian rencana di masa depan (Future Tense).';
+        const isWould = token.text?.toLowerCase().includes('would');
+        tooltipTitle = isWould ? 'Modal Auxiliary (would)' : 'Modal Auxiliary (will)';
+        tooltipDescription = isWould
+          ? 'Kata kerja bantu modal lampau (V2) untuk menyatakan rencana di masa lampau atau pengandaian (Past Future Tense).'
+          : 'Kata kerja bantu modal untuk menyatakan kepastian rencana di masa depan (Future Tense).';
         break;
       }
 
@@ -1246,7 +1275,7 @@ export function buildSentence({
       }
       return { id: 'token-verb', text: v1, role: 'verb' };
     }
-    if (tenseMode === 'FUTURE') {
+    if (tenseMode === 'FUTURE' || tenseMode === 'PAST_FUTURE') {
       return { id: 'token-verb', text: v1, role: 'verb' };
     }
     return { id: 'token-verb', text: v1, role: 'verb' };
@@ -1373,20 +1402,26 @@ export function buildSentence({
           tokens.push(v3Token);
           tokens.push(agentToken);
         }
-      } else if (tense === 'FUTURE') {
+      } else if (tense === 'FUTURE' || tense === 'PAST_FUTURE') {
+        const isPastFuture = tense === 'PAST_FUTURE';
+        const modalWord = isPastFuture ? 'would' : 'will';
+        const modalCap = isPastFuture ? 'Would' : 'Will';
+        const modalNeg = isPastFuture ? "wouldn't" : "won't";
+        const modalNegCap = isPastFuture ? "Wouldn't" : "Won't";
+
         if (form === 'positive') {
-          const canContract = contracted && getSubjectHelperContraction(passiveSubject, 'will');
+          const canContract = contracted && getSubjectHelperContraction(passiveSubject, modalWord);
           if (canContract) {
             tokens.push({
               id: 'token-subj',
               text: canContract,
               role: 'subject-contracted',
               contractedSubject: formatSubjectText(passiveSubject, true),
-              contractedHelper: 'will',
+              contractedHelper: modalWord,
             });
           } else {
             tokens.push({ id: 'token-subj', text: formatSubjectText(passiveSubject, true), role: 'subject' });
-            tokens.push({ id: 'token-modal', text: 'will', role: 'helper-modal' });
+            tokens.push({ id: 'token-modal', text: modalWord, role: 'helper-modal' });
           }
           tokens.push({ id: 'token-helper', text: 'have', role: 'helper-have' });
           tokens.push({ id: 'token-be', text: 'been', role: 'helper-be' });
@@ -1396,10 +1431,10 @@ export function buildSentence({
         } else if (form === 'negative') {
           tokens.push({ id: 'token-subj', text: formatSubjectText(passiveSubject, true), role: 'subject' });
           if (contracted) {
-            tokens.push({ id: 'token-helper', text: "won't", role: 'helper-negative' });
+            tokens.push({ id: 'token-helper', text: modalNeg, role: 'helper-negative' });
             tokens.push({ id: 'token-have', text: 'have', role: 'helper-have' });
           } else {
-            tokens.push({ id: 'token-modal', text: 'will', role: 'helper-modal' });
+            tokens.push({ id: 'token-modal', text: modalWord, role: 'helper-modal' });
             tokens.push({ id: 'token-not', text: 'not', role: 'helper-negative' });
             tokens.push({ id: 'token-have', text: 'have', role: 'helper-have' });
           }
@@ -1408,7 +1443,7 @@ export function buildSentence({
           tokens.push(v3Token);
           tokens.push(agentToken);
         } else if (form === 'question') {
-          tokens.push({ id: 'token-modal', text: 'Will', role: 'helper-question' });
+          tokens.push({ id: 'token-modal', text: modalCap, role: 'helper-question' });
           tokens.push({ id: 'token-subj', text: formatSubjectText(passiveSubject, false), role: 'subject' });
           tokens.push({ id: 'token-have', text: 'have', role: 'helper-have' });
           tokens.push({ id: 'token-be', text: 'been', role: 'helper-be' });
@@ -1417,11 +1452,11 @@ export function buildSentence({
           tokens.push(agentToken);
         } else if (isNegativeQuestion) {
           if (contracted) {
-            tokens.push({ id: 'token-modal', text: "Won't", role: 'helper-negative-question' });
+            tokens.push({ id: 'token-modal', text: modalNegCap, role: 'helper-negative-question' });
             tokens.push({ id: 'token-subj', text: formatSubjectText(passiveSubject, false), role: 'subject' });
             tokens.push({ id: 'token-have', text: 'have', role: 'helper-have' });
           } else {
-            tokens.push({ id: 'token-modal', text: 'Will', role: 'helper-question' });
+            tokens.push({ id: 'token-modal', text: modalCap, role: 'helper-question' });
             tokens.push({ id: 'token-subj', text: formatSubjectText(passiveSubject, false), role: 'subject' });
             tokens.push({ id: 'token-not', text: 'not', role: 'helper-negative' });
             tokens.push({ id: 'token-have', text: 'have', role: 'helper-have' });
@@ -1531,20 +1566,26 @@ export function buildSentence({
           tokens.push(v3Token);
           tokens.push(agentToken);
         }
-      } else if (tense === 'FUTURE') {
+      } else if (tense === 'FUTURE' || tense === 'PAST_FUTURE') {
+        const isPastFuture = tense === 'PAST_FUTURE';
+        const modalWord = isPastFuture ? 'would' : 'will';
+        const modalCap = isPastFuture ? 'Would' : 'Will';
+        const modalNeg = isPastFuture ? "wouldn't" : "won't";
+        const modalNegCap = isPastFuture ? "Wouldn't" : "Won't";
+
         if (form === 'positive') {
-          const canContract = contracted && getSubjectHelperContraction(passiveSubject, 'will');
+          const canContract = contracted && getSubjectHelperContraction(passiveSubject, modalWord);
           if (canContract) {
             tokens.push({
               id: 'token-subj',
               text: canContract,
               role: 'subject-contracted',
               contractedSubject: formatSubjectText(passiveSubject, true),
-              contractedHelper: 'will',
+              contractedHelper: modalWord,
             });
           } else {
             tokens.push({ id: 'token-subj', text: formatSubjectText(passiveSubject, true), role: 'subject' });
-            tokens.push({ id: 'token-modal', text: 'will', role: 'helper-modal' });
+            tokens.push({ id: 'token-modal', text: modalWord, role: 'helper-modal' });
           }
           tokens.push({ id: 'token-be', text: 'be', role: 'helper-be' });
           if (isCont) tokens.push({ id: 'token-being', text: 'being', role: 'helper-be' });
@@ -1553,9 +1594,9 @@ export function buildSentence({
         } else if (form === 'negative') {
           tokens.push({ id: 'token-subj', text: formatSubjectText(passiveSubject, true), role: 'subject' });
           if (contracted) {
-            tokens.push({ id: 'token-helper', text: "won't", role: 'helper-negative' });
+            tokens.push({ id: 'token-helper', text: modalNeg, role: 'helper-negative' });
           } else {
-            tokens.push({ id: 'token-modal', text: 'will', role: 'helper-modal' });
+            tokens.push({ id: 'token-modal', text: modalWord, role: 'helper-modal' });
             tokens.push({ id: 'token-not', text: 'not', role: 'helper-negative' });
           }
           tokens.push({ id: 'token-be', text: 'be', role: 'helper-be' });
@@ -1563,7 +1604,7 @@ export function buildSentence({
           tokens.push(v3Token);
           tokens.push(agentToken);
         } else if (form === 'question') {
-          tokens.push({ id: 'token-modal', text: 'Will', role: 'helper-question' });
+          tokens.push({ id: 'token-modal', text: modalCap, role: 'helper-question' });
           tokens.push({ id: 'token-subj', text: formatSubjectText(passiveSubject, false), role: 'subject' });
           tokens.push({ id: 'token-be', text: 'be', role: 'helper-be' });
           if (isCont) tokens.push({ id: 'token-being', text: 'being', role: 'helper-be' });
@@ -1571,11 +1612,11 @@ export function buildSentence({
           tokens.push(agentToken);
         } else if (isNegativeQuestion) {
           if (contracted) {
-            tokens.push({ id: 'token-modal', text: "Won't", role: 'helper-negative-question' });
+            tokens.push({ id: 'token-modal', text: modalNegCap, role: 'helper-negative-question' });
             tokens.push({ id: 'token-subj', text: formatSubjectText(passiveSubject, false), role: 'subject' });
             tokens.push({ id: 'token-be', text: 'be', role: 'helper-be' });
           } else {
-            tokens.push({ id: 'token-modal', text: 'Will', role: 'helper-question' });
+            tokens.push({ id: 'token-modal', text: modalCap, role: 'helper-question' });
             tokens.push({ id: 'token-subj', text: formatSubjectText(passiveSubject, false), role: 'subject' });
             tokens.push({ id: 'token-not', text: 'not', role: 'helper-negative' });
             tokens.push({ id: 'token-be', text: 'be', role: 'helper-be' });
@@ -1701,23 +1742,28 @@ export function buildSentence({
           tokens.push(predicateToken);
         }
       }
-    } else if (tense === 'FUTURE') {
+    } else if (tense === 'FUTURE' || tense === 'PAST_FUTURE') {
+      const isPastFuture = tense === 'PAST_FUTURE';
+      const modalWord = isPastFuture ? 'would' : 'will';
+      const modalCap = isPastFuture ? 'Would' : 'Will';
+      const modalNeg = isPastFuture ? "wouldn't" : "won't";
+      const modalNegCap = isPastFuture ? "Wouldn't" : "Won't";
       const needsBeen = isNominal || isPerCont;
       const needsBeing = isNominal && isPerCont;
 
       if (form === 'positive') {
-        const canContract = contracted && getSubjectHelperContraction(cleanSubject, 'will');
+        const canContract = contracted && getSubjectHelperContraction(cleanSubject, modalWord);
         if (canContract) {
           tokens.push({
             id: 'token-subj',
             text: canContract,
             role: 'subject-contracted',
             contractedSubject: formatSubjectText(cleanSubject, true),
-            contractedHelper: 'will',
+            contractedHelper: modalWord,
           });
         } else {
           tokens.push({ id: 'token-subj', text: formatSubjectText(cleanSubject, true), role: 'subject' });
-          tokens.push({ id: 'token-modal', text: 'will', role: 'helper-modal' });
+          tokens.push({ id: 'token-modal', text: modalWord, role: 'helper-modal' });
         }
         tokens.push({ id: 'token-helper', text: 'have', role: 'helper-have' });
         if (needsBeen) tokens.push({ id: 'token-be', text: 'been', role: 'helper-be' });
@@ -1726,10 +1772,10 @@ export function buildSentence({
       } else if (form === 'negative') {
         tokens.push({ id: 'token-subj', text: formatSubjectText(cleanSubject, true), role: 'subject' });
         if (contracted) {
-          tokens.push({ id: 'token-helper', text: "won't", role: 'helper-negative' });
+          tokens.push({ id: 'token-helper', text: modalNeg, role: 'helper-negative' });
           tokens.push({ id: 'token-have', text: 'have', role: 'helper-have' });
         } else {
-          tokens.push({ id: 'token-modal', text: 'will', role: 'helper-modal' });
+          tokens.push({ id: 'token-modal', text: modalWord, role: 'helper-modal' });
           tokens.push({ id: 'token-not', text: 'not', role: 'helper-negative' });
           tokens.push({ id: 'token-have', text: 'have', role: 'helper-have' });
         }
@@ -1737,7 +1783,7 @@ export function buildSentence({
         if (needsBeing) tokens.push({ id: 'token-being', text: 'being', role: 'helper-be' });
         tokens.push(predicateToken);
       } else if (form === 'question') {
-        tokens.push({ id: 'token-modal', text: 'Will', role: 'helper-question' });
+        tokens.push({ id: 'token-modal', text: modalCap, role: 'helper-question' });
         tokens.push({ id: 'token-subj', text: formatSubjectText(cleanSubject, false), role: 'subject' });
         tokens.push({ id: 'token-have', text: 'have', role: 'helper-have' });
         if (needsBeen) tokens.push({ id: 'token-be', text: 'been', role: 'helper-be' });
@@ -1745,14 +1791,14 @@ export function buildSentence({
         tokens.push(predicateToken);
       } else if (isNegativeQuestion) {
         if (contracted) {
-          tokens.push({ id: 'token-modal', text: "Won't", role: 'helper-negative-question' });
+          tokens.push({ id: 'token-modal', text: modalNegCap, role: 'helper-negative-question' });
           tokens.push({ id: 'token-subj', text: formatSubjectText(cleanSubject, false), role: 'subject' });
           tokens.push({ id: 'token-have', text: 'have', role: 'helper-have' });
           if (needsBeen) tokens.push({ id: 'token-be', text: 'been', role: 'helper-be' });
           if (needsBeing) tokens.push({ id: 'token-being', text: 'being', role: 'helper-be' });
           tokens.push(predicateToken);
         } else {
-          tokens.push({ id: 'token-modal', text: 'Will', role: 'helper-question' });
+          tokens.push({ id: 'token-modal', text: modalCap, role: 'helper-question' });
           tokens.push({ id: 'token-subj', text: formatSubjectText(cleanSubject, false), role: 'subject' });
           tokens.push({ id: 'token-not', text: 'not', role: 'helper-negative' });
           tokens.push({ id: 'token-have', text: 'have', role: 'helper-have' });
@@ -1863,20 +1909,26 @@ export function buildSentence({
           tokens.push(predicateToken);
         }
       }
-    } else if (tense === 'FUTURE') {
+    } else if (tense === 'FUTURE' || tense === 'PAST_FUTURE') {
+      const isPastFuture = tense === 'PAST_FUTURE';
+      const modalWord = isPastFuture ? 'would' : 'will';
+      const modalCap = isPastFuture ? 'Would' : 'Will';
+      const modalNeg = isPastFuture ? "wouldn't" : "won't";
+      const modalNegCap = isPastFuture ? "Wouldn't" : "Won't";
+
       if (form === 'positive') {
-        const canContract = contracted && getSubjectHelperContraction(cleanSubject, 'will');
+        const canContract = contracted && getSubjectHelperContraction(cleanSubject, modalWord);
         if (canContract) {
           tokens.push({
             id: 'token-subj',
             text: canContract,
             role: 'subject-contracted',
             contractedSubject: formatSubjectText(cleanSubject, true),
-            contractedHelper: 'will',
+            contractedHelper: modalWord,
           });
         } else {
           tokens.push({ id: 'token-subj', text: formatSubjectText(cleanSubject, true), role: 'subject' });
-          tokens.push({ id: 'token-helper', text: 'will', role: 'helper-modal' });
+          tokens.push({ id: 'token-helper', text: modalWord, role: 'helper-modal' });
         }
         tokens.push({ id: 'token-be', text: 'be', role: 'helper-be' });
         if (isNominalCont) tokens.push({ id: 'token-being', text: 'being', role: 'helper-be' });
@@ -1884,29 +1936,29 @@ export function buildSentence({
       } else if (form === 'negative') {
         tokens.push({ id: 'token-subj', text: formatSubjectText(cleanSubject, true), role: 'subject' });
         if (contracted) {
-          tokens.push({ id: 'token-helper', text: "won't", role: 'helper-negative' });
+          tokens.push({ id: 'token-helper', text: modalNeg, role: 'helper-negative' });
         } else {
-          tokens.push({ id: 'token-modal', text: 'will', role: 'helper-modal' });
+          tokens.push({ id: 'token-modal', text: modalWord, role: 'helper-modal' });
           tokens.push({ id: 'token-not', text: 'not', role: 'helper-negative' });
         }
         tokens.push({ id: 'token-be', text: 'be', role: 'helper-be' });
         if (isNominalCont) tokens.push({ id: 'token-being', text: 'being', role: 'helper-be' });
         tokens.push(predicateToken);
       } else if (form === 'question') {
-        tokens.push({ id: 'token-helper', text: 'Will', role: 'helper-question' });
+        tokens.push({ id: 'token-helper', text: modalCap, role: 'helper-question' });
         tokens.push({ id: 'token-subj', text: formatSubjectText(cleanSubject, false), role: 'subject' });
         tokens.push({ id: 'token-be', text: 'be', role: 'helper-be' });
         if (isNominalCont) tokens.push({ id: 'token-being', text: 'being', role: 'helper-be' });
         tokens.push(predicateToken);
       } else if (isNegativeQuestion) {
         if (contracted) {
-          tokens.push({ id: 'token-helper', text: "Won't", role: 'helper-negative-question' });
+          tokens.push({ id: 'token-helper', text: modalNegCap, role: 'helper-negative-question' });
           tokens.push({ id: 'token-subj', text: formatSubjectText(cleanSubject, false), role: 'subject' });
           tokens.push({ id: 'token-be', text: 'be', role: 'helper-be' });
           if (isNominalCont) tokens.push({ id: 'token-being', text: 'being', role: 'helper-be' });
           tokens.push(predicateToken);
         } else {
-          tokens.push({ id: 'token-helper', text: 'Will', role: 'helper-question' });
+          tokens.push({ id: 'token-helper', text: modalCap, role: 'helper-question' });
           tokens.push({ id: 'token-subj', text: formatSubjectText(cleanSubject, false), role: 'subject' });
           tokens.push({ id: 'token-not', text: 'not', role: 'helper-negative' });
           tokens.push({ id: 'token-be', text: 'be', role: 'helper-be' });
@@ -2081,18 +2133,23 @@ export function buildSentence({
         tokens.push(predicateToken);
       }
     }
-  } else if (tense === 'FUTURE') {
-    const predicateToken = getPredicateToken('SIMPLE', 'FUTURE', form);
+  } else if (tense === 'FUTURE' || tense === 'PAST_FUTURE') {
+    const isPastFuture = tense === 'PAST_FUTURE';
+    const modalWord = isPastFuture ? 'would' : 'will';
+    const modalCap = isPastFuture ? 'Would' : 'Will';
+    const modalNeg = isPastFuture ? "wouldn't" : "won't";
+    const modalNegCap = isPastFuture ? "Wouldn't" : "Won't";
+    const predicateToken = getPredicateToken('SIMPLE', tense, form);
 
     if (form === 'positive') {
-      const canContract = contracted && getSubjectHelperContraction(cleanSubject, 'will');
+      const canContract = contracted && getSubjectHelperContraction(cleanSubject, modalWord);
       if (canContract) {
         tokens.push({
           id: 'token-subj',
           text: canContract,
           role: 'subject-contracted',
           contractedSubject: formatSubjectText(cleanSubject, true),
-          contractedHelper: 'will',
+          contractedHelper: modalWord,
         });
       } else {
         tokens.push({
@@ -2102,7 +2159,7 @@ export function buildSentence({
         });
         tokens.push({
           id: 'token-helper',
-          text: 'will',
+          text: modalWord,
           role: 'helper-modal',
         });
       }
@@ -2116,13 +2173,13 @@ export function buildSentence({
       if (contracted) {
         tokens.push({
           id: 'token-helper',
-          text: "won't",
+          text: modalNeg,
           role: 'helper-negative',
         });
       } else {
         tokens.push({
           id: 'token-modal',
-          text: 'will',
+          text: modalWord,
           role: 'helper-modal',
         });
         tokens.push({
@@ -2135,7 +2192,7 @@ export function buildSentence({
     } else if (form === 'question') {
       tokens.push({
         id: 'token-helper',
-        text: 'Will',
+        text: modalCap,
         role: 'helper-question',
       });
       tokens.push({
@@ -2148,7 +2205,7 @@ export function buildSentence({
       if (contracted) {
         tokens.push({
           id: 'token-helper',
-          text: "Won't",
+          text: modalNegCap,
           role: 'helper-negative-question',
         });
         tokens.push({
@@ -2160,7 +2217,7 @@ export function buildSentence({
       } else {
         tokens.push({
           id: 'token-helper',
-          text: 'Will',
+          text: modalCap,
           role: 'helper-question',
         });
         tokens.push({
@@ -2276,6 +2333,7 @@ export function getTenseFormulaInfo({ tense, aspect, sentenceType, form, isPassi
     PRESENT: 'Present',
     PAST: 'Past',
     FUTURE: 'Future',
+    PAST_FUTURE: 'Past Future',
   };
 
   const tenseTitle = `${tenseNames[tense] || 'Present'} ${aspectNames[aspect] || 'Simple'} (${modeLabel})`;
@@ -2302,6 +2360,12 @@ export function getTenseFormulaInfo({ tense, aspect, sentenceType, form, isPassi
           question: 'Will + S + V1 + O/C + ?',
           negative_question: "Won't + S + V1 + O/C + ?",
         },
+        PAST_FUTURE: {
+          positive: 'S + would + V1 + O/C',
+          negative: 'S + would + not + V1 + O/C',
+          question: 'Would + S + V1 + O/C + ?',
+          negative_question: "Wouldn't + S + V1 + O/C + ?",
+        },
       },
       CONTINUOUS: {
         PRESENT: {
@@ -2321,6 +2385,12 @@ export function getTenseFormulaInfo({ tense, aspect, sentenceType, form, isPassi
           negative: 'S + will + not + be + V-ing + O/C',
           question: 'Will + S + be + V-ing + O/C + ?',
           negative_question: "Won't + S + be + V-ing + O/C + ?",
+        },
+        PAST_FUTURE: {
+          positive: 'S + would + be + V-ing + O/C',
+          negative: 'S + would + not + be + V-ing + O/C',
+          question: 'Would + S + be + V-ing + O/C + ?',
+          negative_question: "Wouldn't + S + be + V-ing + O/C + ?",
         },
       },
       PERFECT: {
@@ -2342,6 +2412,12 @@ export function getTenseFormulaInfo({ tense, aspect, sentenceType, form, isPassi
           question: 'Will + S + have + V3 + O/C + ?',
           negative_question: "Won't + S + have + V3 + O/C + ?",
         },
+        PAST_FUTURE: {
+          positive: 'S + would + have + V3 + O/C',
+          negative: 'S + would + not + have + V3 + O/C',
+          question: 'Would + S + have + V3 + O/C + ?',
+          negative_question: "Wouldn't + S + have + V3 + O/C + ?",
+        },
       },
       'PER.CONT': {
         PRESENT: {
@@ -2361,6 +2437,12 @@ export function getTenseFormulaInfo({ tense, aspect, sentenceType, form, isPassi
           negative: 'S + will + not + have + been + V-ing + O/C',
           question: 'Will + S + have + been + V-ing + O/C + ?',
           negative_question: "Won't + S + have + been + V-ing + O/C + ?",
+        },
+        PAST_FUTURE: {
+          positive: 'S + would + have + been + V-ing + O/C',
+          negative: 'S + would + not + have + been + V-ing + O/C',
+          question: 'Would + S + have + been + V-ing + O/C + ?',
+          negative_question: "Wouldn't + S + have + been + V-ing + O/C + ?",
         },
       },
     },
@@ -2384,6 +2466,12 @@ export function getTenseFormulaInfo({ tense, aspect, sentenceType, form, isPassi
           question: 'Will + S + be + Complement + ?',
           negative_question: "Won't + S + be + Complement + ?",
         },
+        PAST_FUTURE: {
+          positive: 'S + would + be + Complement',
+          negative: 'S + would + not + be + Complement',
+          question: 'Would + S + be + Complement + ?',
+          negative_question: "Wouldn't + S + be + Complement + ?",
+        },
       },
       CONTINUOUS: {
         PRESENT: {
@@ -2403,6 +2491,12 @@ export function getTenseFormulaInfo({ tense, aspect, sentenceType, form, isPassi
           negative: 'S + will + not + be + being + Complement',
           question: 'Will + S + be + being + Complement + ?',
           negative_question: "Won't + S + be + being + Complement + ?",
+        },
+        PAST_FUTURE: {
+          positive: 'S + would + be + being + Complement',
+          negative: 'S + would + not + be + being + Complement',
+          question: 'Would + S + be + being + Complement + ?',
+          negative_question: "Wouldn't + S + be + being + Complement + ?",
         },
       },
       PERFECT: {
@@ -2424,6 +2518,12 @@ export function getTenseFormulaInfo({ tense, aspect, sentenceType, form, isPassi
           question: 'Will + S + have + been + Complement + ?',
           negative_question: "Won't + S + have + been + Complement + ?",
         },
+        PAST_FUTURE: {
+          positive: 'S + would + have + been + Complement',
+          negative: 'S + would + not + have + been + Complement',
+          question: 'Would + S + have + been + Complement + ?',
+          negative_question: "Wouldn't + S + have + been + Complement + ?",
+        },
       },
       'PER.CONT': {
         PRESENT: {
@@ -2443,6 +2543,12 @@ export function getTenseFormulaInfo({ tense, aspect, sentenceType, form, isPassi
           negative: 'S + will + not + have + been + being + Complement',
           question: 'Will + S + have + been + being + Complement + ?',
           negative_question: "Won't + S + have + been + being + Complement + ?",
+        },
+        PAST_FUTURE: {
+          positive: 'S + would + have + been + being + Complement',
+          negative: 'S + would + not + have + been + being + Complement',
+          question: 'Would + S + have + been + being + Complement + ?',
+          negative_question: "Wouldn't + S + have + been + being + Complement + ?",
         },
       },
     },
@@ -2466,6 +2572,12 @@ export function getTenseFormulaInfo({ tense, aspect, sentenceType, form, isPassi
           question: 'Will + S (Objek) + be + V3 + by + Agent + ?',
           negative_question: "Won't + S (Objek) + be + V3 + by + Agent + ?",
         },
+        PAST_FUTURE: {
+          positive: 'S (Objek) + would + be + V3 + by + Agent',
+          negative: 'S (Objek) + would + not + be + V3 + by + Agent',
+          question: 'Would + S (Objek) + be + V3 + by + Agent + ?',
+          negative_question: "Wouldn't + S (Objek) + be + V3 + by + Agent + ?",
+        },
       },
       CONTINUOUS: {
         PRESENT: {
@@ -2485,6 +2597,12 @@ export function getTenseFormulaInfo({ tense, aspect, sentenceType, form, isPassi
           negative: 'S (Objek) + will + not + be + being + V3 + by + Agent',
           question: 'Will + S (Objek) + be + being + V3 + by + Agent + ?',
           negative_question: "Won't + S (Objek) + be + being + V3 + by + Agent + ?",
+        },
+        PAST_FUTURE: {
+          positive: 'S (Objek) + would + be + being + V3 + by + Agent',
+          negative: 'S (Objek) + would + not + be + being + V3 + by + Agent',
+          question: 'Would + S (Objek) + be + being + V3 + by + Agent + ?',
+          negative_question: "Wouldn't + S (Objek) + be + being + V3 + by + Agent + ?",
         },
       },
       PERFECT: {
@@ -2506,6 +2624,12 @@ export function getTenseFormulaInfo({ tense, aspect, sentenceType, form, isPassi
           question: 'Will + S (Objek) + have + been + V3 + by + Agent + ?',
           negative_question: "Won't + S (Objek) + have + been + V3 + by + Agent + ?",
         },
+        PAST_FUTURE: {
+          positive: 'S (Objek) + would + have + been + V3 + by + Agent',
+          negative: 'S (Objek) + would + not + have + been + V3 + by + Agent',
+          question: 'Would + S (Objek) + have + been + V3 + by + Agent + ?',
+          negative_question: "Wouldn't + S (Objek) + have + been + V3 + by + Agent + ?",
+        },
       },
       'PER.CONT': {
         PRESENT: {
@@ -2525,6 +2649,12 @@ export function getTenseFormulaInfo({ tense, aspect, sentenceType, form, isPassi
           negative: 'S (Objek) + will + not + have + been + being + V3 + by + Agent',
           question: 'Will + S (Objek) + have + been + being + V3 + by + Agent + ?',
           negative_question: "Won't + S (Objek) + have + been + being + V3 + by + Agent + ?",
+        },
+        PAST_FUTURE: {
+          positive: 'S (Objek) + would + have + been + being + V3 + by + Agent',
+          negative: 'S (Objek) + would + not + have + been + being + V3 + by + Agent',
+          question: 'Would + S (Objek) + have + been + being + V3 + by + Agent + ?',
+          negative_question: "Wouldn't + S (Objek) + have + been + being + V3 + by + Agent + ?",
         },
       },
     },
@@ -2583,20 +2713,31 @@ export function getSentenceLogicBlocks({
     subjectType === 'first_singular' ||
     subjectType === 'FIRST_PERSON';
 
-  // 1. FUTURE (MODAL + BV)
-  if (tense === 'FUTURE') {
+  // 1. FUTURE or PAST FUTURE (MODAL + BV)
+  if (tense === 'FUTURE' || tense === 'PAST_FUTURE') {
+    const isPastFuture = tense === 'PAST_FUTURE';
+    const defaultModal = isPastFuture ? 'would' : 'will';
+    const defaultModalNeg = isPastFuture ? "wouldn't" : "won't";
     const modalTok =
       findToken('helper-modal') ||
-      tokens.find((t) => t.text?.toLowerCase() === 'will' || t.text?.toLowerCase() === "won't") ||
+      tokens.find((t) => {
+        const txt = t.text?.toLowerCase();
+        return (
+          txt === 'will' ||
+          txt === "won't" ||
+          txt === 'would' ||
+          txt === "wouldn't"
+        );
+      }) ||
       findToken('helper-question') ||
       findToken('helper-negative-question') ||
       findToken('helper-negative') ||
       findToken('subject-contracted');
     const modalText = modalTok
-      ? modalTok.text.toLowerCase()
+      ? (modalTok.contractedHelper || modalTok.text).toLowerCase()
       : useContraction && form === 'negative'
-      ? "won't"
-      : 'will';
+      ? defaultModalNeg
+      : defaultModal;
 
     let nextWord = 'be';
     let nextTok = null;
@@ -2626,7 +2767,7 @@ export function getSentenceLogicBlocks({
     const tokenIds = [modalTok?.id, nextTok?.id].filter(Boolean);
 
     blocks.push({
-      category: 'FUTURE',
+      category: isPastFuture ? 'PAST FUTURE' : 'FUTURE',
       formula: 'MODAL + BV',
       realization: `${modalText} ${nextWord}`,
       tokenIds,
@@ -2804,7 +2945,7 @@ export function getSentenceLogicBlocks({
   }
 
   // 5. SIMPLE
-  if (aspect === 'SIMPLE' && tense !== 'FUTURE' && !isPassive) {
+  if (aspect === 'SIMPLE' && tense !== 'FUTURE' && tense !== 'PAST_FUTURE' && !isPassive) {
     if (sentenceType === 'verbal') {
       const verbTok = findToken('verb');
       const helperTok =
@@ -2930,6 +3071,9 @@ export function getSentenceTimeBlock({ tense, sentenceData, activeVerb }) {
   } else if (tense === 'FUTURE') {
     timeLabel = 'FUTURE';
     formLabel = 'MODAL';
+  } else if (tense === 'PAST_FUTURE') {
+    timeLabel = 'PAST FUTURE';
+    formLabel = 'MODAL (V2)';
   } else {
     timeLabel = 'PRESENT';
     formLabel = 'V1';
@@ -2978,6 +3122,12 @@ export function getSentenceTimeBlock({ tense, sentenceData, activeVerb }) {
       realization = "will > won't";
     } else {
       realization = 'will';
+    }
+  } else if (tense === 'PAST_FUTURE') {
+    if (raw.includes('wouldn') || raw.includes('won') || raw.includes('not')) {
+      realization = "will > wouldn't";
+    } else {
+      realization = 'will > would';
     }
   }
 

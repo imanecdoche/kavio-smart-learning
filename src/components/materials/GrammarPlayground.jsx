@@ -152,21 +152,25 @@ const VERBAL_TIME_SIGNALS = {
     PRESENT: ['every day', 'usually', 'always', 'often', 'at night', 'in the morning', 'on Mondays', 'sometimes'],
     PAST: ['yesterday', 'last night', 'this morning', 'at 7 PM yesterday', 'on Monday', 'in 2024', '2 days ago'],
     FUTURE: ['tomorrow', 'tonight', 'at 8 AM tomorrow', 'on Friday', 'in July', 'soon', 'next week'],
+    PAST_FUTURE: ['the next day', 'the day after', 'in that year', 'at that time', 'then'],
   },
   CONTINUOUS: {
     PRESENT: ['now', 'right now', 'at the moment', 'at present'],
     PAST: ['at 7 PM yesterday', 'when you called', 'at that time', 'on Sunday afternoon'],
     FUTURE: ['at 10 AM tomorrow', 'this time tomorrow', 'soon', 'on Saturday night'],
+    PAST_FUTURE: ['at that time', 'when he arrived', 'on that day', 'at 7 PM that day'],
   },
   PERFECT: {
     PRESENT: ['already', 'just', 'yet', 'since morning', 'for 2 hours', 'in recent years'],
     PAST: ['before yesterday', 'by the time', 'already', 'at 5 PM yesterday'],
     FUTURE: ['by tomorrow', 'by next week', 'by 5 PM', 'at 6 PM tomorrow'],
+    PAST_FUTURE: ['by that time', 'by the following week', 'before then', 'already'],
   },
   'PER.CONT': {
     PRESENT: ['for 2 hours', 'since morning', 'all day', 'since 7 AM'],
     PAST: ['for 2 hours yesterday', 'before he came', 'all day', 'since 8 AM yesterday'],
     FUTURE: ['for 2 hours by tomorrow', 'by next month', 'all day', 'by 5 PM tomorrow'],
+    PAST_FUTURE: ['for 2 hours by then', 'all that day', 'since that morning'],
   },
 };
 
@@ -175,21 +179,25 @@ const NOMINAL_TIME_SIGNALS = {
     PRESENT: ['now', 'right now', 'today', 'nowadays', 'at present', 'at night', 'in the morning'],
     PAST: ['yesterday', 'last year', 'in the past', 'at 7 PM yesterday', 'on Sunday', '2 years ago'],
     FUTURE: ['tomorrow', 'in the future', 'at 8 AM tomorrow', 'on Friday', 'someday', 'soon'],
+    PAST_FUTURE: ['the next day', 'in the past', 'at that time', 'then', 'someday back then'],
   },
   CONTINUOUS: {
     PRESENT: ['now', 'right now', 'at the moment', 'at present'],
     PAST: ['yesterday', 'at that time', 'at 7 PM yesterday', 'back then'],
     FUTURE: ['tomorrow', 'soon', 'at 10 AM tomorrow', 'in the future'],
+    PAST_FUTURE: ['at that time', 'on that day', 'back then'],
   },
   PERFECT: {
     PRESENT: ['already', 'lately', 'recently', 'since yesterday', 'for years'],
     PAST: ['before', 'previously', 'already', 'at 5 PM yesterday'],
     FUTURE: ['by next year', 'by tomorrow', 'soon', 'at 6 PM tomorrow'],
+    PAST_FUTURE: ['by that time', 'before then', 'by the following year'],
   },
   'PER.CONT': {
     PRESENT: ['for years', 'since then', 'all day', 'since 7 AM'],
     PAST: ['for years before', 'all along', 'since yesterday'],
     FUTURE: ['by next year', 'all day', 'by 5 PM tomorrow'],
+    PAST_FUTURE: ['for years by then', 'since then', 'all along'],
   },
 };
 
@@ -423,7 +431,7 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
   const [nominalComplement, setNominalComplement] = useState('happy');
   const [customComplementInput, setCustomComplementInput] = useState('');
 
-  const [tense, setTense] = useState('PRESENT'); // 'PRESENT' | 'PAST' | 'FUTURE'
+  const [tense, setTense] = useState('PRESENT'); // 'PRESENT' | 'PAST' | 'FUTURE' | 'PAST_FUTURE'
   const [form, setForm] = useState('positive'); // 'positive' | 'negative' | 'question' | 'negative_question'
   const [useContraction, setUseContraction] = useState(false); // Toggle singkatan (Default: OFF)
   const [subject, setSubject] = useState('Sarah');
@@ -733,6 +741,9 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
         if (tense === 'FUTURE') {
           return `Future Perfect Nominal: Helper "will have been" menargetkan kondisi yang akan sudah terwujud di masa depan.`;
         }
+        if (tense === 'PAST_FUTURE') {
+          return `Past Future Perfect Nominal: Helper "would have been" menargetkan kondisi yang semestinya sudah terwujud di masa lalu sebagai pengandaian.`;
+        }
       } else {
         const v3 = getPastParticipleVerb(activeVerb);
         if (tense === 'PRESENT') {
@@ -744,6 +755,9 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
         }
         if (tense === 'FUTURE') {
           return `Future Perfect: Helper modal "will have" + Verb 3 (${v3}) menargetkan peristiwa yang akan sudah selesai di masa depan.`;
+        }
+        if (tense === 'PAST_FUTURE') {
+          return `Past Future Perfect: Helper modal "would have" + Verb 3 (${v3}) menyatakan peristiwa yang semestinya sudah selesai di masa lampau (pengandaian).`;
         }
       }
     }
@@ -764,6 +778,9 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
       if (tense === 'FUTURE') {
         return `Future Perfect Continuous: Helper "will have been" + V-ing (${vIng}) menyatakan akumulasi durasi kegiatan yang akan masih berlangsung di masa depan.`;
       }
+      if (tense === 'PAST_FUTURE') {
+        return `Past Future Perfect Continuous: Helper "would have been" + V-ing (${vIng}) menyatakan durasi kegiatan yang semestinya sedang berlangsung di masa lampau.`;
+      }
     }
 
     // 4. Aspect CONTINUOUS
@@ -783,6 +800,9 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
         if (tense === 'FUTURE') {
           return `Future Continuous: Helper "will be" menemani "${vIng}" untuk menyatakan kegiatan yang AKAN SEDANG berlangsung di masa depan.`;
         }
+        if (tense === 'PAST_FUTURE') {
+          return `Past Future Continuous: Helper modal "would be" menemani "${vIng}" untuk menyatakan kegiatan yang semestinya SEDANG berlangsung di masa lampau atau pengandaian.`;
+        }
       }
     }
 
@@ -798,6 +818,9 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
       }
       if (tense === 'FUTURE') {
         return `Kalimat nominal Future: Helper modal "will be" menghubungkan subjek dengan kondisi sifat/benda/tempat di masa depan.`;
+      }
+      if (tense === 'PAST_FUTURE') {
+        return `Kalimat nominal Past Future: Helper modal "would be" menghubungkan subjek dengan kondisi sifat/benda/tempat dari sudut pandang masa lalu atau pengandaian.`;
       }
     }
 
@@ -845,6 +868,17 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
       }
       if (form === 'question') {
         return `Helper masa depan "Will" melompat ke depan subjek untuk menanyakan kepastian rencana.`;
+      }
+    } else if (tense === 'PAST_FUTURE') {
+      if (form === 'positive') {
+        return `Helper modal lampau "would" disisipkan untuk menyatakan rencana masa lalu atau pengandaian. Semua subjek memakai kata kerja Verb 1 dasar (${activeVerb}).`;
+      }
+      if (form === 'negative') {
+        const helperText = useContraction ? "wouldn't" : "would not";
+        return `Gunakan helper "${helperText}" untuk menyatakan penolakan atau sanggahan rencana pengandaian.`;
+      }
+      if (form === 'question') {
+        return `Helper "Would" melompat ke depan subjek untuk menanyakan rencana pengandaian.`;
       }
     }
 
@@ -1232,17 +1266,18 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
               </div>
 
               {/* Waktu Utama (Fixed Segmented Control) */}
-              <div className="grid grid-cols-3 gap-0.5 bg-[#181b28] p-0.5 rounded-lg h-8 shrink-0 w-full sm:w-[220px]">
+              <div className="grid grid-cols-4 gap-0.5 bg-[#181b28] p-0.5 rounded-lg h-8 shrink-0 w-full sm:w-[285px]">
                 {[
                   { id: 'PRESENT', label: 'PRESENT' },
                   { id: 'PAST', label: 'PAST' },
                   { id: 'FUTURE', label: 'FUTURE' },
+                  { id: 'PAST_FUTURE', label: 'PAST FUT.' },
                 ].map((t) => (
                   <button
                     key={t.id}
                     type="button"
                     onClick={() => handleTenseChange(t.id)}
-                    className={`h-7 rounded-md text-[11px] sm:text-xs font-mono font-bold transition-all border-0 cursor-pointer ${
+                    className={`h-7 rounded-md text-[10px] sm:text-[11px] font-mono font-bold transition-all border-0 cursor-pointer ${
                       tense === t.id
                         ? 'bg-blue-600 text-white shadow'
                         : 'bg-transparent text-zinc-400 hover:text-white'
