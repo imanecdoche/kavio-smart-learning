@@ -6,7 +6,7 @@ import { lookupVerb } from '../../data/dictionary/verbsData';
 /**
  * Kavio Domino Chain Inspector Modal
  * Bedah Visual Rantai Interlocking Brackets Pola Tenses Kavio
- * Menampilkan kalimat dengan bracket atas dan bawah yang mengaitkan setiap elemen pola.
+ * Menampilkan kalimat dengan bracket atas dan bawah yang mengaitkan setiap elemen pola tanpa tumpang tindih.
  */
 export const KavioChainInspectorModal = ({
   isOpen,
@@ -21,6 +21,7 @@ export const KavioChainInspectorModal = ({
 }) => {
   const [selectedBlockKey, setSelectedBlockKey] = useState(null);
   const containerRef = useRef(null);
+  const stageRef = useRef(null);
   const wordsRowRef = useRef(null);
   const wordRefs = useRef([]);
   const [wordPositions, setWordPositions] = useState([]);
@@ -88,20 +89,7 @@ export const KavioChainInspectorModal = ({
     const brackets = [];
     const titleBlocks = [];
 
-    // 1. Cari index kata-kata pembentuk predikat
-    // Predikat terdiri dari helper (modal, have, be) dan verb utama
-    const predicateTokens = tokens.filter(
-      (t) =>
-        t.role === 'helper-modal' ||
-        t.role === 'helper-have' ||
-        t.role === 'helper-be' ||
-        t.role === 'verb' ||
-        t.role === 'helper-negative' ||
-        t.role === 'helper-question' ||
-        t.role === 'subject-contracted'
-    );
-
-    // Identifikasi token spesifik
+    // Identifikasi token spesifik pembentuk predikat
     const modalToken = tokens.find((t) => t.role === 'helper-modal');
     const haveToken = tokens.find(
       (t) =>
@@ -120,7 +108,7 @@ export const KavioChainInspectorModal = ({
       tokens.find((t) => t.role === 'timeSignal');
 
     // =========================================================================
-    // A. TIME / TENSE BLOCK (Garis Balok Bawah pada Kata Kerja Pertama)
+    // 1. TIME / TENSE BLOCK (Garis Balok Bawah pada Kata Kerja Pertama)
     // =========================================================================
     const tenseKey = 'TIME';
     const isFuture = tense === 'FUTURE' || tense === 'PAST_FUTURE';
@@ -138,7 +126,6 @@ export const KavioChainInspectorModal = ({
 
     // Derivasi untuk Waktu
     let timeDerivation = null;
-    const timeWordText = firstPredicateToken ? firstPredicateToken.text.toUpperCase() : '';
     if (isFuture) {
       const modalBase = tense === 'PAST_FUTURE' ? 'WOULD' : 'WILL';
       timeDerivation = (
@@ -148,7 +135,6 @@ export const KavioChainInspectorModal = ({
         </div>
       );
     } else {
-      // Periksa apakah kata pertama adalah HAVE, BE, atau Main Verb
       const firstLower = firstPredicateToken?.text?.toLowerCase() || '';
       if (/have|has|had/.test(firstLower)) {
         timeDerivation = (
@@ -210,41 +196,11 @@ export const KavioChainInspectorModal = ({
     });
 
     // =========================================================================
-    // B. FUTURE MODAL BRACKET (Garis Balok Atas jika Future / Past Future)
+    // 2. PERFECT BLOCK (HAVE + V3)
+    // Pasangan kata kerja pertama yang memakai Have -> selalu di posisi TOP
     // =========================================================================
-    if (isFuture && modalToken) {
-      // Cari kata berikutnya setelah modal
-      const modalIdx = words.findIndex((w) => w.id === modalToken.id);
-      const nextWordIdx = modalIdx + 1 < words.length ? modalIdx + 1 : modalIdx;
-      const nextWord = words[nextWordIdx];
-
-      if (nextWord && modalIdx !== nextWordIdx) {
-        brackets.push({
-          key: 'FUTURE_MODAL',
-          titleBlockKey: timeCategory,
-          position: 'top',
-          startIndex: modalIdx,
-          endIndex: nextWordIdx,
-          formula: 'MODAL + BV',
-          category: timeCategory,
-          highlightWordIds: [modalToken.id, nextWord.id],
-          derivation: (
-            <div className="flex items-center justify-center gap-2 text-zinc-400 font-mono text-xs sm:text-sm md:text-base">
-              <span>MODAL +</span>
-              <span className="text-cyan-400 font-bold">BV</span>
-              <span className="text-zinc-600">→</span>
-              <span>{modalToken.text.toUpperCase()} +</span>
-              <span className="text-cyan-400 font-extrabold">{nextWord.text.toUpperCase()}</span>
-            </div>
-          ),
-        });
-      }
-    }
-
-    // =========================================================================
-    // C. PERFECT BLOCK (Garis Balok Atas: HAVE + V3)
-    // =========================================================================
-    if (aspect === 'PERFECT' || aspect === 'PER.CONT') {
+    const hasPerfect = aspect === 'PERFECT' || aspect === 'PER.CONT';
+    if (hasPerfect) {
       const perfectKey = 'PERFECT';
       titleBlocks.push({
         key: perfectKey,
@@ -258,7 +214,6 @@ export const KavioChainInspectorModal = ({
         const nextWord = words[nextWordIdx];
 
         if (nextWord && haveIdx !== nextWordIdx) {
-          // Derivasi Perfect
           const nextUpper = nextWord.text.toUpperCase();
           const isNextBe = /been/i.test(nextWord.text);
           const perfectDerivation = (
@@ -296,9 +251,12 @@ export const KavioChainInspectorModal = ({
     }
 
     // =========================================================================
-    // D. CONTINUOUS BLOCK (Garis Balok Bawah: BE + V-ING)
+    // 3. CONTINUOUS BLOCK (BE + V-ING)
+    // Jika ada Perfect (PER.CONT), Continuous di posisi BOTTOM (berdampingan dgn TIME)
+    // Jika tidak ada Perfect (CONTINUOUS murni), Continuous di posisi TOP
     // =========================================================================
-    if (aspect === 'CONTINUOUS' || aspect === 'PER.CONT') {
+    const hasContinuous = aspect === 'CONTINUOUS' || aspect === 'PER.CONT';
+    if (hasContinuous) {
       const contKey = 'CONTINUOUS';
       titleBlocks.push({
         key: contKey,
@@ -306,7 +264,6 @@ export const KavioChainInspectorModal = ({
         label: 'CONTINUOUS',
       });
 
-      // Cari kata BE dan kata kerja -ING setelahnya
       const continuousBeToken =
         beTokens.find((t) => !/being/i.test(t.text)) ||
         tokens.find((t) => t.role === 'helper-be' || /is|am|are|was|were|be|been/i.test(t.text));
@@ -338,10 +295,15 @@ export const KavioChainInspectorModal = ({
             </div>
           );
 
+          // Posisi alternasi:
+          // Jika ada Perfect (TOP), maka Continuous bergeser ke BOTTOM.
+          // Jika tanpa Perfect, Continuous menempati TOP (karena TIME sudah di BOTTOM).
+          const contPosition = hasPerfect ? 'bottom' : 'top';
+
           brackets.push({
             key: contKey,
             titleBlockKey: contKey,
-            position: 'bottom',
+            position: contPosition,
             startIndex: beIdx,
             endIndex: nextWordIdx,
             formula: 'BE + V-ING',
@@ -354,7 +316,9 @@ export const KavioChainInspectorModal = ({
     }
 
     // =========================================================================
-    // E. PASSIVE BLOCK (Garis Balok Atas: BE + V3)
+    // 4. PASSIVE BLOCK (BE + V3)
+    // Mengaitkan token BE terakhir dan kata kerja V3 utama
+    // Posisi diatur berlawanan dengan bracket sebelumnya agar tidak bertabrakan
     // =========================================================================
     if (isPassive) {
       const passiveKey = 'PASSIVE';
@@ -364,7 +328,6 @@ export const KavioChainInspectorModal = ({
         label: 'PASSIVE',
       });
 
-      // Cari token BE yang langsung mendahului V3
       const lastBeToken =
         beTokens.length > 0 ? beTokens[beTokens.length - 1] : null;
 
@@ -393,10 +356,24 @@ export const KavioChainInspectorModal = ({
             </div>
           );
 
+          // Posisi alternasi:
+          // Jika ada Perfect & Continuous (PER.CONT), Continuous di BOTTOM -> Passive di TOP.
+          // Jika hanya Continuous (TOP), Passive di BOTTOM.
+          // Jika hanya Perfect (TOP), Passive di BOTTOM.
+          // Jika Simple (TIME di BOTTOM), Passive di TOP.
+          let passivePosition = 'top';
+          if (aspect === 'CONTINUOUS') {
+            passivePosition = 'bottom';
+          } else if (aspect === 'PERFECT') {
+            passivePosition = 'bottom';
+          } else {
+            passivePosition = 'top';
+          }
+
           brackets.push({
             key: passiveKey,
             titleBlockKey: passiveKey,
-            position: 'top',
+            position: passivePosition,
             startIndex: beIdx,
             endIndex: verbIdx,
             formula: 'BE + V3',
@@ -409,7 +386,7 @@ export const KavioChainInspectorModal = ({
     }
 
     // =========================================================================
-    // F. SIMPLE BLOCK (Jika aspek Simple & bukan pasif)
+    // 5. SIMPLE BLOCK (Jika aspek Simple & bukan pasif)
     // =========================================================================
     if (aspect === 'SIMPLE' && !isPassive) {
       const simpleKey = 'SIMPLE';
@@ -419,7 +396,32 @@ export const KavioChainInspectorModal = ({
         label: 'SIMPLE',
       });
 
-      if (verbToken) {
+      if (isFuture && modalToken && verbToken) {
+        // Future Simple: bracket TOP mengaitkan MODAL + BV
+        const mIdx = words.findIndex((w) => w.id === modalToken.id);
+        const vIdx = words.findIndex((w) => w.id === verbToken.id);
+        if (mIdx !== -1 && vIdx !== -1 && mIdx < vIdx) {
+          brackets.push({
+            key: simpleKey,
+            titleBlockKey: simpleKey,
+            position: 'top',
+            startIndex: mIdx,
+            endIndex: vIdx,
+            formula: 'MODAL + BV',
+            category: 'SIMPLE',
+            highlightWordIds: [modalToken.id, verbToken.id],
+            derivation: (
+              <div className="flex items-center justify-center gap-2 text-zinc-400 font-mono text-xs sm:text-sm md:text-base">
+                <span>MODAL +</span>
+                <span className="text-cyan-400 font-bold">BV</span>
+                <span className="text-zinc-600">→</span>
+                <span>{modalToken.text.toUpperCase()} +</span>
+                <span className="text-cyan-400 font-extrabold">{verbLookup.v1.toUpperCase()}</span>
+              </div>
+            ),
+          });
+        }
+      } else if (verbToken) {
         const vIdx = words.findIndex((w) => w.id === verbToken.id);
         if (vIdx !== -1) {
           const vText = verbToken.text.toUpperCase();
@@ -452,18 +454,18 @@ export const KavioChainInspectorModal = ({
     };
   }, [tokens, tense, aspect, isPassive, verbLookup]);
 
-  // Mengukur posisi setiap kata (bounding box offset) untuk koordinat presisi garis bracket SVG
+  // Mengukur posisi setiap kata (bounding box offset) relatif terhadap stage container yang sama
   useLayoutEffect(() => {
-    if (!isOpen || !wordsRowRef.current) return;
+    if (!isOpen || !stageRef.current) return;
 
     const measurePositions = () => {
-      if (!wordsRowRef.current) return;
-      const rowRect = wordsRowRef.current.getBoundingClientRect();
+      if (!stageRef.current) return;
+      const stageRect = stageRef.current.getBoundingClientRect();
       const positions = wordRefs.current.map((el) => {
         if (!el) return { left: 0, right: 0, width: 0, centerX: 0 };
         const rect = el.getBoundingClientRect();
-        const left = rect.left - rowRect.left;
-        const right = rect.right - rowRect.left;
+        const left = rect.left - stageRect.left;
+        const right = rect.right - stageRect.left;
         return {
           left,
           right,
@@ -480,8 +482,8 @@ export const KavioChainInspectorModal = ({
       measurePositions();
     });
 
-    if (wordsRowRef.current) {
-      resizeObserver.observe(wordsRowRef.current);
+    if (stageRef.current) {
+      resizeObserver.observe(stageRef.current);
     }
     window.addEventListener('resize', measurePositions);
 
@@ -521,6 +523,15 @@ export const KavioChainInspectorModal = ({
   const handleToggleBlock = (blockKey) => {
     setSelectedBlockKey((prev) => (prev === blockKey ? null : blockKey));
   };
+
+  // Hitung ukuran font secara adaptif sesuai jumlah kata agar tidak terpotong
+  const wordCount = chainAnalysis.words.length;
+  const wordFontSizeClass =
+    wordCount <= 3
+      ? 'text-3xl sm:text-5xl md:text-6xl'
+      : wordCount <= 5
+      ? 'text-2xl sm:text-3xl md:text-4xl lg:text-5xl'
+      : 'text-xl sm:text-2xl md:text-3xl lg:text-4xl';
 
   return (
     <AnimatePresence>
@@ -567,136 +578,141 @@ export const KavioChainInspectorModal = ({
         {/* Main Canvas Area: Domino Chain Brackets Diagram */}
         <div
           ref={containerRef}
-          className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 md:px-8 py-8 sm:py-12 flex flex-col items-center justify-center min-h-[380px]"
+          className="flex-1 w-full max-w-7xl mx-auto px-2 sm:px-6 md:px-8 py-4 sm:py-8 flex flex-col items-center justify-center min-h-[360px]"
         >
-          {/* Visual Brackets & Words Stage */}
-          <div className="w-full relative flex flex-col items-center justify-center overflow-x-auto py-12 sm:py-16">
-            {/* Top Brackets Layer */}
-            <div className="w-full flex items-center justify-center relative min-h-[56px] sm:min-h-[64px] mb-2">
-              {wordPositions.length > 0 &&
-                chainAnalysis.brackets
-                  .filter((b) => b.position === 'top')
-                  .map((bracket) => {
-                    const startPos = wordPositions[bracket.startIndex];
-                    const endPos = wordPositions[bracket.endIndex];
-                    if (!startPos || !endPos) return null;
-
-                    const left = startPos.left + 4;
-                    const width = Math.max(16, endPos.right - startPos.left - 8);
-                    const highlighted = isBracketHighlighted(bracket);
-
-                    return (
-                      <div
-                        key={`top-bracket-${bracket.key}`}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => handleToggleBlock(bracket.key)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            handleToggleBlock(bracket.key);
-                          }
-                        }}
-                        className="absolute bottom-0 flex flex-col items-center justify-end cursor-pointer group transition-opacity duration-200"
-                        style={{
-                          left: `${left}px`,
-                          width: `${width}px`,
-                          opacity: highlighted ? 1 : 0.25,
-                        }}
-                      >
-                        {/* Labels above bracket line */}
-                        <div className="flex flex-col items-center justify-center text-center pb-1.5">
-                          <span className="text-[10px] sm:text-xs font-mono font-medium tracking-wider text-zinc-400 uppercase leading-none">
-                            {bracket.formula}
-                          </span>
-                          <span className="text-xs sm:text-sm font-sans font-extrabold tracking-wider text-white uppercase mt-0.5 leading-tight">
-                            {bracket.category}
-                          </span>
-                        </div>
-
-                        {/* Top Bracket Line with down-tick ends ┌──────┐ */}
-                        <div className="w-full h-3 border-t-2 border-l-2 border-r-2 border-white transition-colors duration-200" />
-                      </div>
-                    );
-                  })}
-            </div>
-
-            {/* Middle Row: Sentence Words */}
+          {/* Visual Brackets & Words Stage - Scrollable with zero clipping */}
+          <div className="w-full overflow-x-auto py-6 sm:py-10 no-scrollbar">
             <div
-              ref={wordsRowRef}
-              className="inline-flex items-baseline justify-center relative z-20 whitespace-nowrap px-4 py-2"
+              ref={stageRef}
+              className="min-w-max mx-auto px-8 sm:px-16 flex flex-col items-center justify-center relative select-none"
             >
-              {chainAnalysis.words.map((word, idx) => {
-                const highlighted = isWordHighlighted(word);
-                return (
-                  <span
-                    key={word.id}
-                    ref={(el) => (wordRefs.current[idx] = el)}
-                    className={`inline-block px-1.5 sm:px-2.5 md:px-3 text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-sans font-black tracking-tight sm:tracking-normal transition-colors duration-200 ${
-                      highlighted ? 'text-white' : 'text-zinc-600'
-                    }`}
-                    style={{ lineHeight: 1.15 }}
-                  >
-                    {word.text.toUpperCase()}
-                  </span>
-                );
-              })}
-            </div>
+              {/* Top Brackets Layer */}
+              <div className="w-full relative min-h-[60px] sm:min-h-[70px] mb-2">
+                {wordPositions.length > 0 &&
+                  chainAnalysis.brackets
+                    .filter((b) => b.position === 'top')
+                    .map((bracket) => {
+                      const startPos = wordPositions[bracket.startIndex];
+                      const endPos = wordPositions[bracket.endIndex];
+                      if (!startPos || !endPos) return null;
 
-            {/* Bottom Brackets Layer */}
-            <div className="w-full flex items-center justify-center relative min-h-[56px] sm:min-h-[64px] mt-2">
-              {wordPositions.length > 0 &&
-                chainAnalysis.brackets
-                  .filter((b) => b.position === 'bottom')
-                  .map((bracket) => {
-                    const startPos = wordPositions[bracket.startIndex];
-                    const endPos = wordPositions[bracket.endIndex];
-                    if (!startPos || !endPos) return null;
+                      const left = startPos.left + 2;
+                      const width = Math.max(12, endPos.right - startPos.left - 4);
+                      const highlighted = isBracketHighlighted(bracket);
 
-                    const left = startPos.left + 4;
-                    const width = Math.max(16, endPos.right - startPos.left - 8);
-                    const highlighted = isBracketHighlighted(bracket);
+                      return (
+                        <div
+                          key={`top-bracket-${bracket.key}`}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => handleToggleBlock(bracket.key)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              handleToggleBlock(bracket.key);
+                            }
+                          }}
+                          className="absolute bottom-0 flex flex-col items-center justify-end cursor-pointer group transition-opacity duration-200"
+                          style={{
+                            left: `${left}px`,
+                            width: `${width}px`,
+                            opacity: highlighted ? 1 : 0.25,
+                          }}
+                        >
+                          {/* Labels above bracket line */}
+                          <div className="flex flex-col items-center justify-center text-center pb-1.5 px-1">
+                            <span className="text-[10px] sm:text-xs font-mono font-medium tracking-wider text-zinc-400 uppercase leading-none whitespace-nowrap">
+                              {bracket.formula}
+                            </span>
+                            <span className="text-xs sm:text-sm font-sans font-extrabold tracking-wider text-white uppercase mt-0.5 leading-tight whitespace-nowrap">
+                              {bracket.category}
+                            </span>
+                          </div>
 
-                    return (
-                      <div
-                        key={`bottom-bracket-${bracket.key}`}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => handleToggleBlock(bracket.key)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            handleToggleBlock(bracket.key);
-                          }
-                        }}
-                        className="absolute top-0 flex flex-col items-center justify-start cursor-pointer group transition-opacity duration-200"
-                        style={{
-                          left: `${left}px`,
-                          width: `${width}px`,
-                          opacity: highlighted ? 1 : 0.25,
-                        }}
-                      >
-                        {/* Bottom Bracket Line with up-tick ends └──────┘ */}
-                        <div className="w-full h-3 border-b-2 border-l-2 border-r-2 border-white transition-colors duration-200" />
-
-                        {/* Labels below bracket line */}
-                        <div className="flex flex-col items-center justify-center text-center pt-1.5">
-                          <span className="text-[10px] sm:text-xs font-mono font-medium tracking-wider text-zinc-400 uppercase leading-none">
-                            {bracket.formula}
-                          </span>
-                          <span className="text-xs sm:text-sm font-sans font-extrabold tracking-wider text-white uppercase mt-0.5 leading-tight">
-                            {bracket.category}
-                          </span>
+                          {/* Top Bracket Line with down-tick ends ┌──────┐ */}
+                          <div className="w-full h-3 border-t-2 border-l-2 border-r-2 border-white transition-colors duration-200" />
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+              </div>
+
+              {/* Middle Row: Sentence Words */}
+              <div
+                ref={wordsRowRef}
+                className="flex items-baseline justify-center relative z-20 whitespace-nowrap px-2 py-2"
+              >
+                {chainAnalysis.words.map((word, idx) => {
+                  const highlighted = isWordHighlighted(word);
+                  return (
+                    <span
+                      key={word.id}
+                      ref={(el) => (wordRefs.current[idx] = el)}
+                      className={`inline-block px-1.5 sm:px-2 md:px-3 ${wordFontSizeClass} font-sans font-black tracking-tight sm:tracking-normal transition-colors duration-200 ${
+                        highlighted ? 'text-white' : 'text-zinc-600'
+                      }`}
+                      style={{ lineHeight: 1.15 }}
+                    >
+                      {word.text.toUpperCase()}
+                    </span>
+                  );
+                })}
+              </div>
+
+              {/* Bottom Brackets Layer */}
+              <div className="w-full relative min-h-[60px] sm:min-h-[70px] mt-2">
+                {wordPositions.length > 0 &&
+                  chainAnalysis.brackets
+                    .filter((b) => b.position === 'bottom')
+                    .map((bracket) => {
+                      const startPos = wordPositions[bracket.startIndex];
+                      const endPos = wordPositions[bracket.endIndex];
+                      if (!startPos || !endPos) return null;
+
+                      const left = startPos.left + 2;
+                      const width = Math.max(12, endPos.right - startPos.left - 4);
+                      const highlighted = isBracketHighlighted(bracket);
+
+                      return (
+                        <div
+                          key={`bottom-bracket-${bracket.key}`}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => handleToggleBlock(bracket.key)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              handleToggleBlock(bracket.key);
+                            }
+                          }}
+                          className="absolute top-0 flex flex-col items-center justify-start cursor-pointer group transition-opacity duration-200"
+                          style={{
+                            left: `${left}px`,
+                            width: `${width}px`,
+                            opacity: highlighted ? 1 : 0.25,
+                          }}
+                        >
+                          {/* Bottom Bracket Line with up-tick ends └──────┘ */}
+                          <div className="w-full h-3 border-b-2 border-l-2 border-r-2 border-white transition-colors duration-200" />
+
+                          {/* Labels below bracket line */}
+                          <div className="flex flex-col items-center justify-center text-center pt-1.5 px-1">
+                            <span className="text-[10px] sm:text-xs font-mono font-medium tracking-wider text-zinc-400 uppercase leading-none whitespace-nowrap">
+                              {bracket.formula}
+                            </span>
+                            <span className="text-xs sm:text-sm font-sans font-extrabold tracking-wider text-white uppercase mt-0.5 leading-tight whitespace-nowrap">
+                              {bracket.category}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+              </div>
             </div>
           </div>
 
           {/* Bottom Title Bar: Clickable Tense Pattern Blocks */}
-          <div className="w-full flex flex-col items-center justify-center text-center mt-6 sm:mt-10">
-            <div className="inline-flex items-center justify-center flex-wrap gap-x-2.5 sm:gap-x-3.5 gap-y-2 text-xl sm:text-2xl md:text-3xl font-sans font-extrabold tracking-wider uppercase">
+          <div className="w-full flex flex-col items-center justify-center text-center mt-4 sm:mt-8">
+            <div className="inline-flex items-center justify-center flex-wrap gap-x-3 sm:gap-x-4 gap-y-2 text-xl sm:text-2xl md:text-3xl font-sans font-extrabold tracking-wider uppercase">
               {chainAnalysis.titleBlocks.map((tb) => {
                 const highlighted = isTitleBlockHighlighted(tb);
                 return (
@@ -717,7 +733,7 @@ export const KavioChainInspectorModal = ({
             </div>
 
             {/* Dynamic Transformation & Derivation Breakdown */}
-            <div className="min-h-[48px] sm:min-h-[56px] flex items-center justify-center mt-4 sm:mt-6 px-4">
+            <div className="min-h-[48px] sm:min-h-[56px] flex items-center justify-center mt-3 sm:mt-5 px-4">
               <AnimatePresence mode="wait">
                 {activeBracket && activeBracket.derivation ? (
                   <motion.div
