@@ -489,12 +489,23 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
   const [openPicker, setOpenPicker] = useState(null); // 'timeSignal' | 'subject' | 'predicate' | 'object' | null
   const [selectedBlockIndex, setSelectedBlockIndex] = useState(null);
   const [showTenseModal, setShowTenseModal] = useState(false);
-  const [isLandscapeMode, setIsLandscapeMode] = useState(false);
+  const [isPhysicalLandscape, setIsPhysicalLandscape] = useState(false);
+  const [isManualLandscape, setIsManualLandscape] = useState(false);
+  const [isScreenPortrait, setIsScreenPortrait] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.innerHeight > window.innerWidth;
+  });
   const [isRightDrawerOpen, setIsRightDrawerOpen] = useState(false);
   const [isLeftDrawerOpen, setIsLeftDrawerOpen] = useState(false);
   const pickerContainerRef = useRef(null);
   const touchStartXRef = useRef(null);
   const touchStartYRef = useRef(null);
+  const wasPhysicalLandscapeRef = useRef(false);
+
+  // Mode landscape aktif jika fisik layar landscape (pada mobile/tablet) ATAU diaktifkan via tombol rotate
+  const isLandscapeMode = isPhysicalLandscape || isManualLandscape;
+  // Rotasi visual CSS diterapkan jika manual landscape aktif pada layar yang orientasi fisiknya masih portrait (misal HP tegak)
+  const isCssRotated = isManualLandscape && isScreenPortrait;
 
   // Menerapkan konfigurasi preset dari modul pembelajaran (misal dari CTA Unit 3 Prepositions)
   useEffect(() => {
@@ -738,8 +749,12 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
   const handleLandscapeTouchEnd = (e) => {
     if (!isLandscapeMode || touchStartXRef.current === null) return;
     const touch = e.changedTouches[0];
-    const diffX = touch.clientX - touchStartXRef.current;
-    const diffY = touch.clientY - touchStartYRef.current;
+    const diffX = isCssRotated
+      ? touch.clientY - touchStartYRef.current
+      : touch.clientX - touchStartXRef.current;
+    const diffY = isCssRotated
+      ? touch.clientX - touchStartXRef.current
+      : touch.clientY - touchStartYRef.current;
 
     // Geser horizontal dominan dengan threshold minimal 40px
     if (Math.abs(diffX) > 40 && Math.abs(diffX) > Math.abs(diffY) * 1.3) {
@@ -763,6 +778,104 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
     }
     touchStartXRef.current = null;
     touchStartYRef.current = null;
+  };
+
+  // Auto-detect ketika layar HP diputar secara fisik ke landscape
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const checkPhysicalOrientation = () => {
+      const isPortrait = window.innerHeight > window.innerWidth;
+      setIsScreenPortrait(isPortrait);
+
+      // Deteksi perangkat mobile/tablet (HP)
+      const isMobileDevice =
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+          navigator.userAgent || ''
+        ) ||
+        (typeof navigator !== 'undefined' &&
+          navigator.maxTouchPoints > 0 &&
+          Math.max(window.innerWidth, window.innerHeight) <= 1366);
+
+      // Cek apakah orientasi fisik aktual adalah landscape
+      const isLandscape =
+        window.innerWidth > window.innerHeight ||
+        window.matchMedia('(orientation: landscape)').matches;
+
+      // Otomatis nyala jika mendeteksi layar HP diputer ke posisi landscape
+      if (isMobileDevice) {
+        setIsPhysicalLandscape(isLandscape);
+        // Jika sebelumnya fisik HP adalah landscape lalu diputar kembali tegak ke portrait:
+        if (wasPhysicalLandscapeRef.current && !isLandscape) {
+          setIsManualLandscape(false);
+          setIsRightDrawerOpen(false);
+          setIsLeftDrawerOpen(false);
+        }
+        wasPhysicalLandscapeRef.current = isLandscape;
+      } else {
+        // Pada desktop browser standar, biarkan dikontrol melalui tombol rotate di header
+        setIsPhysicalLandscape(false);
+      }
+    };
+
+    checkPhysicalOrientation();
+
+    const mediaQuery = window.matchMedia('(orientation: landscape)');
+    const handleMqlChange = () => checkPhysicalOrientation();
+
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', handleMqlChange);
+    } else if (mediaQuery.addListener) {
+      mediaQuery.addListener(handleMqlChange);
+    }
+    window.addEventListener('resize', checkPhysicalOrientation);
+    window.addEventListener('orientationchange', checkPhysicalOrientation);
+
+    return () => {
+      if (mediaQuery.removeEventListener) {
+        mediaQuery.removeEventListener('change', handleMqlChange);
+      } else if (mediaQuery.removeListener) {
+        mediaQuery.removeListener(handleMqlChange);
+      }
+      window.removeEventListener('resize', checkPhysicalOrientation);
+      window.removeEventListener('orientationchange', checkPhysicalOrientation);
+    };
+  }, []);
+
+  // Handler tombol Rotate di header (memutar orientasi ke landscape)
+  const handleToggleRotate = async () => {
+    if (isLandscapeMode) {
+      // Matikan mode landscape
+      setIsManualLandscape(false);
+      setIsPhysicalLandscape(false);
+      setIsRightDrawerOpen(false);
+      setIsLeftDrawerOpen(false);
+
+      if (typeof window !== 'undefined' && window.screen?.orientation?.unlock) {
+        try {
+          if (document.fullscreenElement && document.exitFullscreen) {
+            await document.exitFullscreen().catch(() => {});
+          }
+          window.screen.orientation.unlock();
+        } catch (_) {}
+      }
+    } else {
+      // Aktifkan mode landscape & rotasi layar
+      setIsManualLandscape(true);
+      setIsRightDrawerOpen(false);
+      setIsLeftDrawerOpen(false);
+
+      if (typeof window !== 'undefined' && window.screen?.orientation?.lock) {
+        try {
+          if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+            await document.documentElement.requestFullscreen().catch(() => {});
+          }
+          await window.screen.orientation.lock('landscape').catch(() => {});
+        } catch (_) {
+          // Fallback ke visual CSS rotation (isCssRotated)
+        }
+      }
+    }
   };
 
   // Tutup drawer dengan tombol Escape saat dalam mode Landscape
@@ -1141,7 +1254,7 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
 
   // Komponen Form Switcher Minimalist (+, -, ?, -?)
   const formSwitcherBar = (
-    <div className="flex items-center justify-center gap-5 sm:gap-7 py-0.5">
+    <div className="flex items-center justify-center gap-8 sm:gap-10 py-2.5 sm:py-3">
       <button
         type="button"
         onClick={() => setForm('positive')}
@@ -1213,7 +1326,11 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
     <div
       onTouchStart={handleLandscapeTouchStart}
       onTouchEnd={handleLandscapeTouchEnd}
-      className="h-[100dvh] w-full bg-[#090a0f] text-zinc-100 select-none overflow-hidden flex flex-col justify-between relative"
+      className={`h-[100dvh] w-full bg-[#090a0f] text-zinc-100 select-none overflow-hidden flex flex-col justify-between relative transition-all duration-300 ${
+        isCssRotated
+          ? 'fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-90 w-[100dvh] h-[100dvw] z-50 origin-center shadow-2xl'
+          : ''
+      }`}
     >
       {/* Top Header Bar */}
       <header className="px-5 md:px-8 pt-[max(0.75rem,env(safe-area-inset-top))] pb-2.5 flex items-center justify-between shrink-0 z-40 bg-[#090a0f]/95 backdrop-blur-md border-b border-[#232736]/40">
@@ -1239,12 +1356,8 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
           {/* Tombol Rotate (Icon Only) */}
           <button
             type="button"
-            onClick={() => {
-              setIsLandscapeMode((prev) => !prev);
-              setIsRightDrawerOpen(false);
-              setIsLeftDrawerOpen(false);
-            }}
-            title={isLandscapeMode ? 'Kembali ke Mode Normal (Portrait)' : 'Aktifkan Mode Landscape'}
+            onClick={handleToggleRotate}
+            title={isLandscapeMode ? 'Kembali ke Mode Normal (Portrait)' : 'Aktifkan Mode Landscape (Putar Layar)'}
             aria-label={isLandscapeMode ? 'Mode Normal' : 'Mode Landscape'}
             className={`h-7 w-7 rounded-lg transition-all duration-200 border-0 cursor-pointer flex items-center justify-center ${
               isLandscapeMode
@@ -1285,15 +1398,15 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
           className={`w-full max-w-6xl mx-auto px-4 sm:px-6 md:px-8 ${
             isLandscapeMode
               ? 'flex-1 flex flex-col items-center justify-center my-auto py-6'
-              : 'pt-4 pb-12 flex flex-col items-center gap-2.5 sm:gap-3'
+              : 'pt-6 sm:pt-8 pb-20 flex flex-col items-center gap-6 sm:gap-8'
           }`}
         >
           {/* ========================================================================= */}
           {/* TOP SECTION: SENTENCE PREVIEW & MINIMALIST ICONS                          */}
           {/* ========================================================================= */}
-          <div className="w-full flex flex-col items-center shrink-0 space-y-2.5">
+          <div className="w-full flex flex-col items-center shrink-0 space-y-4 sm:space-y-6">
             {/* Main Sentence Preview Canvas (3-Block-Ready Zero Layout Shift Canvas) */}
-            <div className="w-full py-2 sm:py-2.5 flex flex-col items-center justify-center relative z-20 overflow-visible min-h-[6.5rem] sm:min-h-[7.75rem] md:min-h-[8.5rem]">
+            <div className="w-full py-4 sm:py-6 flex flex-col items-center justify-center relative z-20 overflow-visible min-h-[6.5rem] sm:min-h-[7.75rem] md:min-h-[8.5rem]">
               <motion.div
                 layout="position"
                 transition={{ layout: { duration: 0.4, ease: [0.85, 0, 0.15, 1] } }}
@@ -1361,7 +1474,7 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
               </motion.div>
 
               {/* Dedicated Translation Slot (Reserved 3rd Block to Prevent Layout Shift) */}
-              <div className={`w-full ${isLandscapeMode ? 'h-8 sm:h-9 mt-3' : 'h-6 sm:h-7 mt-1.5'} flex items-center justify-center px-4 overflow-hidden select-none`}>
+              <div className={`w-full ${isLandscapeMode ? 'h-8 sm:h-9 mt-3' : 'h-7 sm:h-8 mt-2.5 sm:mt-3'} flex items-center justify-center px-4 overflow-hidden select-none`}>
                 <AnimatePresence mode="wait">
                   {showTranslation && sentenceData.translation ? (
                     <motion.div
@@ -1399,7 +1512,7 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
                 ? `fixed top-0 right-0 bottom-0 z-50 w-full max-w-sm sm:max-w-md md:max-w-lg bg-[#0e101a] border-l border-zinc-800 shadow-2xl flex flex-col overflow-hidden transition-transform duration-300 ease-out ${
                     isRightDrawerOpen ? 'translate-x-0' : 'translate-x-full pointer-events-none'
                   }`
-                : 'w-full bg-[#11131c] rounded-2xl p-3.5 sm:p-4 space-y-3 text-left shrink-0'
+                : 'w-full bg-[#11131c] rounded-2xl p-4 sm:p-5 md:p-6 space-y-4 sm:space-y-5 text-left shrink-0 shadow-lg border border-zinc-800/60'
             }
           >
             {/* Header Drawer (Khusus Landscape Mode) */}
@@ -2302,7 +2415,7 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
               ? `fixed top-0 left-0 bottom-0 z-50 w-full max-w-sm sm:max-w-md bg-[#0e101a] border-r border-zinc-800 shadow-2xl flex flex-col overflow-hidden transition-transform duration-300 ease-out ${
                   isLeftDrawerOpen ? 'translate-x-0' : '-translate-x-full pointer-events-none'
                 }`
-              : 'w-full flex flex-col items-center justify-center text-center py-2 shrink-0 space-y-3.5'
+              : 'w-full flex flex-col items-center justify-center text-center py-4 sm:py-6 shrink-0 space-y-4 sm:space-y-5'
           }
         >
           {/* Sheet Header (Khusus Landscape Mode) */}
