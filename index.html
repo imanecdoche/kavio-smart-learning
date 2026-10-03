@@ -21,6 +21,16 @@
       href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
+    <script>
+      // Otomatis unregister service worker jika ada di localhost dev environment
+      if ('serviceWorker' in navigator && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for (var reg of registrations) {
+            reg.unregister();
+          }
+        });
+      }
+    </script>
   </head>
   <body class="bg-[#090a0f] text-zinc-100 antialiased selection:bg-blue-600 selection:text-white">
     <div id="root"></div>

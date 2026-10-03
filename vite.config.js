@@ -2,12 +2,39 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
+const devServiceWorkerKillerPlugin = () => ({
+  name: 'dev-sw-killer',
+  configureServer(server) {
+    server.middlewares.use((req, res, next) => {
+      if (req.url === '/sw.js') {
+        res.setHeader('Content-Type', 'application/javascript');
+        res.end(`
+          self.addEventListener('install', () => self.skipWaiting());
+          self.addEventListener('activate', (event) => {
+            event.waitUntil(
+              self.registration.unregister().then(() => self.clients.matchAll()).then((clients) => {
+                clients.forEach((c) => c.navigate(c.url));
+              })
+            );
+          });
+        `);
+        return;
+      }
+      next();
+    });
+  },
+});
+
 export default defineConfig({
   plugins: [
     react(),
+    devServiceWorkerKillerPlugin(),
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
+      devOptions: {
+        enabled: false,
+      },
       includeAssets: ['favicon.svg', 'icon-192.png', 'icon-512.png'],
       manifest: {
         id: '/',

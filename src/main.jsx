@@ -10,5 +10,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   </React.StrictMode>
 );
 
-// Register Service Worker for PWA (automatic updates)
-registerSW({ immediate: true });
+// Register Service Worker for PWA (production only)
+if (!import.meta.env.DEV) {
+  registerSW({ immediate: true });
+}

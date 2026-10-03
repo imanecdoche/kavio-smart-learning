@@ -73,9 +73,16 @@ const MainApp = () => {
     };
   }, []);
 
-  // While checking session on refresh, maintain steady dark canvas
+  // While checking session on refresh, show minimal loading indicator
   if (loading) {
-    return <div className="min-h-screen bg-[#090a0f]" />;
+    return (
+      <div className="min-h-screen bg-[#090a0f] flex items-center justify-center select-none">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-6 h-6 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
+          <span className="text-xs font-mono text-zinc-500 tracking-wider">Memuat...</span>
+        </div>
+      </div>
+    );
   }
 
   const isStudyView = [

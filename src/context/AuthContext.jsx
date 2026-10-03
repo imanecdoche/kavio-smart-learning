@@ -33,8 +33,11 @@ export const AuthProvider = ({ children }) => {
         }
       }
 
-      // 2. Check Appwrite account
-      const currentUser = await account.get();
+      // 2. Check Appwrite account (dengan timeout 1.5s agar tidak menggantung)
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Auth check timeout')), 1500)
+      );
+      const currentUser = await Promise.race([account.get(), timeoutPromise]);
       setUser(currentUser);
       setIsProjectPaused(false);
     } catch (err) {
