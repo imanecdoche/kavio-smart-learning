@@ -422,7 +422,37 @@ const SentenceTokenItem = ({
   );
 };
 
+const LOADING_STEPS = [
+  'Menginisialisasi Grammar Engine...',
+  'Menyiapkan matriks waktu & aspek...',
+  'Menyusun balok logika kalimat...',
+  'Membuka Grammar Playground...',
+];
+
 export const GrammarPlayground = ({ onBack, initialConfig }) => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadingStep, setLoadingStep] = useState(0);
+
+  useEffect(() => {
+    const stepDuration = 280;
+    const interval = setInterval(() => {
+      setLoadingStep((prev) => {
+        if (prev < LOADING_STEPS.length - 1) {
+          return prev + 1;
+        }
+        clearInterval(interval);
+        setTimeout(() => {
+          setIsLoading(false);
+        }, 180);
+        return prev;
+      });
+    }, stepDuration);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, []);
+
   const [activeTooltipTokenId, setActiveTooltipTokenId] = useState(null); // Single active tooltip ID
   const [sentenceType, setSentenceType] = useState('verbal'); // 'verbal' | 'nominal'
   const [isPassive, setIsPassive] = useState(false); // Toggle Passive Voice (Khusus Verbal)
@@ -990,6 +1020,37 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
     setOpenPicker(null);
     setSelectedBlockIndex(null);
   };
+
+  if (isLoading) {
+    return (
+      <div className="h-[100dvh] w-full bg-[#090a0f] flex flex-col items-center justify-center select-none">
+        <div className="flex flex-col items-center gap-3">
+          {/* Loader kecil di tengah yang berputar */}
+          <div className="w-5 h-5 rounded-full border-2 border-zinc-700/80 border-t-blue-500 animate-spin" />
+
+          {/* Progresbar per step */}
+          <div className="flex items-center gap-1.5 w-44 sm:w-52 mt-1">
+            {LOADING_STEPS.map((_, idx) => (
+              <div
+                key={idx}
+                className="h-1 flex-1 bg-zinc-800/80 rounded-full overflow-hidden"
+              >
+                <div
+                  className="h-full bg-blue-500 rounded-full transition-all duration-200 ease-out"
+                  style={{ width: idx <= loadingStep ? '100%' : '0%' }}
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* Step info */}
+          <p className="text-[11px] sm:text-xs font-mono text-zinc-400 text-center tracking-wide min-h-[1.25rem]">
+            {LOADING_STEPS[loadingStep]}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-[100dvh] w-full bg-[#090a0f] text-zinc-100 select-none overflow-hidden flex flex-col justify-between">
