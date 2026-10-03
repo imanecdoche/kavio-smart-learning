@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, BookOpen, RotateCw, Sliders, LayoutGrid } from 'lucide-react';
 import { TenseExplanationModal } from './TenseExplanationModal';
+import { KavioChainInspectorModal } from './KavioChainInspectorModal';
 import {
   buildSentence,
   detectSubjectType,
@@ -206,75 +207,24 @@ const NOMINAL_TIME_SIGNALS = {
 
 /**
  * Komponen pembungkus token kata pada preview kalimat utama
- * Mendukung Hover di Desktop dan Tap / Tap-and-Hold (~250ms) di Mobile/Touchscreen
- * Menampilkan Tooltip Mengambang (Zero Layout Shift)
+/**
+ * Item Token Kalimat
+ * Mengimplementasikan:
+ * 1. Letter-Level Invariant Morphing untuk kata kerja (Stem terkunci, suffix curtain)
+ * 2. Slot Machine Vertical Rolling untuk kata non-verb
+ * 3. Menghapus tooltip popup, klik kalimat membuka Modal Bedah Pola Tenses
  */
 const SentenceTokenItem = ({
   token,
   persistentLayoutId,
   tokenStyle,
   punctuationMark,
-  activeTooltipTokenId,
-  setActiveTooltipTokenId,
   activeVerb,
   isHighlighted = false,
   isDimmed = false,
+  onSentenceClick,
 }) => {
-  const isPunctuation = token.role === 'punctuation' || !token.tooltipTitle;
-  const [isHovered, setIsHovered] = useState(false);
-  const pressTimerRef = useRef(null);
-  const didLongPressRef = useRef(false);
-
-  const isOpen = !isPunctuation && (isHovered || activeTooltipTokenId === token.id);
-
-  // Bersihkan timer press jika unmount
-  useEffect(() => {
-    return () => {
-      if (pressTimerRef.current) {
-        clearTimeout(pressTimerRef.current);
-      }
-    };
-  }, []);
-
-  const handleMouseEnter = () => {
-    if (isPunctuation) return;
-    setIsHovered(true);
-  };
-
-  const handleMouseLeave = () => {
-    if (isPunctuation) return;
-    setIsHovered(false);
-  };
-
-  // Touch handling untuk mobile tap & tap-and-hold (~250ms)
-  const handleTouchStart = (e) => {
-    if (isPunctuation) return;
-    e.stopPropagation();
-    didLongPressRef.current = false;
-    pressTimerRef.current = setTimeout(() => {
-      didLongPressRef.current = true;
-      setActiveTooltipTokenId(token.id);
-    }, 250);
-  };
-
-  const handleTouchEnd = (e) => {
-    if (isPunctuation) return;
-    e.stopPropagation();
-    if (pressTimerRef.current) {
-      clearTimeout(pressTimerRef.current);
-      pressTimerRef.current = null;
-    }
-  };
-
-  const handleClick = (e) => {
-    if (isPunctuation) return;
-    e.stopPropagation();
-    if (didLongPressRef.current) {
-      didLongPressRef.current = false;
-      return;
-    }
-    setActiveTooltipTokenId((prev) => (prev === token.id ? null : token.id));
-  };
+  const isPunctuation = token.role === 'punctuation';
 
   // Letter-Level Morphing untuk verb token
   const isVerb = token.role === 'verb';
@@ -292,21 +242,18 @@ const SentenceTokenItem = ({
       animate={{ opacity: 1, width: 'auto' }}
       exit={{ opacity: 0, width: 0 }}
       transition={tokenMotionTransition}
-      className={`relative inline-flex items-baseline select-none ${
-        isOpen ? 'z-30 overflow-visible' : 'z-20 overflow-hidden'
-      } cursor-pointer mx-1 sm:mx-1.5 py-1 -my-1`}
+      className="relative inline-flex items-baseline select-none z-20 overflow-hidden cursor-pointer mx-1 sm:mx-1.5 py-1 -my-1"
       style={{
         WebkitTouchCallout: 'none',
         userSelect: 'none',
         lineHeight: 1.35,
         verticalAlign: 'baseline',
       }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-      onTouchCancel={handleTouchEnd}
-      onClick={handleClick}
+      onClick={(e) => {
+        if (isPunctuation) return;
+        e.stopPropagation();
+        onSentenceClick?.();
+      }}
     >
       <span
         className={`whitespace-nowrap inline-flex items-baseline min-w-max transition-all duration-200 ${
@@ -315,8 +262,6 @@ const SentenceTokenItem = ({
             : isDimmed
             ? 'text-white/45 font-normal'
             : tokenStyle
-        } ${
-          isOpen ? 'opacity-100 underline decoration-amber-400/60 decoration-2 underline-offset-4' : ''
         }`}
         style={{ lineHeight: 1.35, verticalAlign: 'baseline' }}
       >
@@ -401,26 +346,6 @@ const SentenceTokenItem = ({
           </span>
         )}
       </span>
-
-      {/* Floating Grammar Tooltip Card (Zero Layout Shift) */}
-      {isOpen && (
-        <div
-          role="tooltip"
-          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2.5 z-50 pointer-events-none w-max max-w-[210px] sm:max-w-[260px] whitespace-normal bg-[#151724] border border-zinc-700/80 rounded-lg p-2.5 shadow-2xl text-left"
-        >
-          <div className="text-amber-300 font-bold uppercase text-[10px] sm:text-[11px] tracking-wider mb-0.5">
-            {token.tooltipTitle}
-          </div>
-          <div className="text-zinc-300 text-[11px] sm:text-xs leading-relaxed font-sans font-normal">
-            {token.tooltipDescription}
-          </div>
-          {/* Caret Arrow pointing down */}
-          <div
-            className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-solid border-t-[#151724] border-t-[6px] border-x-transparent border-x-[6px] border-b-0"
-            aria-hidden="true"
-          />
-        </div>
-      )}
     </motion.div>
   );
 };
@@ -462,7 +387,7 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
     };
   }, []);
 
-  const [activeTooltipTokenId, setActiveTooltipTokenId] = useState(null); // Single active tooltip ID
+  const [showChainModal, setShowChainModal] = useState(false); // Modal Bedah Rantai Domino Kavio
   const [sentenceType, setSentenceType] = useState('verbal'); // 'verbal' | 'nominal'
   const [isPassive, setIsPassive] = useState(false); // Toggle Passive Voice (Khusus Verbal)
   const [showTranslation, setShowTranslation] = useState(false); // Toggle Terjemahan Bahasa Indonesia Dinamis (Default: OFF)
@@ -693,25 +618,7 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
   }, [sentenceData?.tokens]);
 
 
-  // Tutup tooltip saat klik atau tap di luar kata
-  useEffect(() => {
-    const handleOutsideClick = () => {
-      setActiveTooltipTokenId(null);
-    };
 
-    window.addEventListener('click', handleOutsideClick);
-    window.addEventListener('touchstart', handleOutsideClick);
-
-    return () => {
-      window.removeEventListener('click', handleOutsideClick);
-      window.removeEventListener('touchstart', handleOutsideClick);
-    };
-  }, []);
-
-  // Reset tooltip aktif saat parameter atau data kalimat berubah
-  useEffect(() => {
-    setActiveTooltipTokenId(null);
-  }, [sentenceData]);
 
   // Tutup dropdown picker saat klik di luar area picker atau tombol Escape ditekan
   useEffect(() => {
@@ -1432,8 +1339,10 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
               <motion.div
                 layout="position"
                 transition={{ layout: { duration: 0.4, ease: [0.85, 0, 0.15, 1] } }}
-                className="inline-flex items-baseline justify-center content-center flex-wrap gap-y-1.5 w-full min-h-[4.5rem] sm:min-h-[5.5rem] md:min-h-[6.25rem] text-2xl sm:text-3xl md:text-4xl font-mono font-bold text-center relative z-10"
+                className="inline-flex items-baseline justify-center content-center flex-wrap gap-y-1.5 w-full min-h-[4.5rem] sm:min-h-[5.5rem] md:min-h-[6.25rem] text-2xl sm:text-3xl md:text-4xl font-mono font-bold text-center relative z-10 cursor-pointer"
                 style={{ position: 'relative', isolation: 'isolate' }}
+                onClick={() => setShowChainModal(true)}
+                title="Klik kalimat untuk membuka Bedah Pola Rantai Tenses (Kavio Domino Chain)"
               >
                 <AnimatePresence initial={false}>
                   {wordTokens.map((token, idx) => {
@@ -1484,11 +1393,10 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
                         token={token}
                         tokenStyle={tokenStyle}
                         punctuationMark={isLastWord ? punctuationMark : null}
-                        activeTooltipTokenId={activeTooltipTokenId}
-                        setActiveTooltipTokenId={setActiveTooltipTokenId}
                         activeVerb={activeVerb}
                         isHighlighted={isHighlighted}
                         isDimmed={isDimmed}
+                        onSentenceClick={() => setShowChainModal(true)}
                       />
                     );
                   })}
@@ -2774,6 +2682,19 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
         isPassive={isPassive}
         form={form}
         formulaInfo={tenseFormulaInfo}
+      />
+
+      {/* Fullscreen Kavio Domino Chain Inspector Modal */}
+      <KavioChainInspectorModal
+        isOpen={showChainModal}
+        onClose={() => setShowChainModal(false)}
+        tense={tense}
+        aspect={aspect}
+        sentenceType={sentenceType}
+        isPassive={isPassive}
+        form={form}
+        sentenceData={sentenceData}
+        activeVerb={activeVerb}
       />
     </div>
   );
