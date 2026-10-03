@@ -3141,4 +3141,133 @@ export function getSentenceTimeBlock({ tense, sentenceData, activeVerb }) {
   };
 }
 
+/**
+ * Informasi frekuensi penggunaan tenses oleh penutur bahasa Inggris asli (English speakers).
+ * Berdasarkan kajian korpus linguistik modern (Biber et al., Longman Grammar, COCA).
+ *
+ * Skala 5 Tingkat:
+ * 1. Jarang banget (Merah: #ef4444 / #f87171)
+ * 2. Jarang (Oranye: #f97316 / #fb923c)
+ * 3. Kadang (Biru: #3b82f6 / #60a5fa)
+ * 4. Sering (Biru-Hijau / Emerald: #10b981 / #34d399)
+ * 5. Sering banget (Hijau Terang: #22c55e / #4ade80)
+ */
+const TENSE_FREQUENCY_TABLE = {
+  PRESENT: {
+    SIMPLE: {
+      label: 'Sering banget',
+      percentage: 100,
+      color: '#22c55e',
+      textColor: '#4ade80',
+    },
+    CONTINUOUS: {
+      label: 'Sering',
+      percentage: 65,
+      color: '#10b981',
+      textColor: '#34d399',
+    },
+    PERFECT: {
+      label: 'Sering',
+      percentage: 72,
+      color: '#10b981',
+      textColor: '#34d399',
+    },
+    'PER.CONT': {
+      label: 'Jarang',
+      percentage: 28,
+      color: '#f97316',
+      textColor: '#fb923c',
+    },
+  },
+  PAST: {
+    SIMPLE: {
+      label: 'Sering banget',
+      percentage: 90,
+      color: '#22c55e',
+      textColor: '#4ade80',
+    },
+    CONTINUOUS: {
+      label: 'Kadang',
+      percentage: 48,
+      color: '#3b82f6',
+      textColor: '#60a5fa',
+    },
+    PERFECT: {
+      label: 'Kadang',
+      percentage: 44,
+      color: '#3b82f6',
+      textColor: '#60a5fa',
+    },
+    'PER.CONT': {
+      label: 'Jarang banget',
+      percentage: 12,
+      color: '#ef4444',
+      textColor: '#f87171',
+    },
+  },
+  FUTURE: {
+    SIMPLE: {
+      label: 'Sering',
+      percentage: 68,
+      color: '#10b981',
+      textColor: '#34d399',
+    },
+    CONTINUOUS: {
+      label: 'Jarang',
+      percentage: 24,
+      color: '#f97316',
+      textColor: '#fb923c',
+    },
+    PERFECT: {
+      label: 'Jarang banget',
+      percentage: 10,
+      color: '#ef4444',
+      textColor: '#f87171',
+    },
+    'PER.CONT': {
+      label: 'Jarang banget',
+      percentage: 6,
+      color: '#ef4444',
+      textColor: '#f87171',
+    },
+  },
+  PAST_FUTURE: {
+    SIMPLE: {
+      label: 'Kadang',
+      percentage: 42,
+      color: '#3b82f6',
+      textColor: '#60a5fa',
+    },
+    CONTINUOUS: {
+      label: 'Jarang',
+      percentage: 20,
+      color: '#f97316',
+      textColor: '#fb923c',
+    },
+    PERFECT: {
+      label: 'Jarang',
+      percentage: 22,
+      color: '#f97316',
+      textColor: '#fb923c',
+    },
+    'PER.CONT': {
+      label: 'Jarang banget',
+      percentage: 5,
+      color: '#ef4444',
+      textColor: '#f87171',
+    },
+  },
+};
+
+export function getTenseFrequencyInfo({ tense, aspect }) {
+  const normTense = tense || 'PRESENT';
+  const normAspect = aspect || 'SIMPLE';
+  const match =
+    TENSE_FREQUENCY_TABLE[normTense]?.[normAspect] ||
+    TENSE_FREQUENCY_TABLE.PRESENT.SIMPLE;
+
+  return match;
+}
+
+
 

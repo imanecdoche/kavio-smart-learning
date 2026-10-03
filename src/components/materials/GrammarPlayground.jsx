@@ -14,6 +14,7 @@ import {
   getTenseFormulaInfo,
   getSentenceLogicBlocks,
   getSentenceTimeBlock,
+  getTenseFrequencyInfo,
 } from '../../utils/grammarEngine.js';
 import { lookupVerb, getVerbSuggestions } from '../../data/dictionary/verbsData';
 import { lookupNominal, getNominalSuggestions } from '../../data/dictionary/nominalData';
@@ -434,7 +435,13 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
   const [loadingStep, setLoadingStep] = useState(0);
 
   useEffect(() => {
-    const stepDuration = 280;
+    // Generate random duration between 2000ms (2.0s) and 3500ms (3.5s)
+    const minDuration = 2000;
+    const maxDuration = 3500;
+    const totalDuration =
+      Math.floor(Math.random() * (maxDuration - minDuration + 1)) + minDuration;
+    const stepDuration = Math.round(totalDuration / LOADING_STEPS.length);
+
     const interval = setInterval(() => {
       setLoadingStep((prev) => {
         if (prev < LOADING_STEPS.length - 1) {
@@ -443,7 +450,7 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
         clearInterval(interval);
         setTimeout(() => {
           setIsLoading(false);
-        }, 180);
+        }, 150);
         return prev;
       });
     }, stepDuration);
@@ -966,6 +973,10 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
       activeVerb,
     });
   }, [tense, sentenceData, activeVerb]);
+
+  const tenseFrequencyInfo = useMemo(() => {
+    return getTenseFrequencyInfo({ tense, aspect });
+  }, [tense, aspect]);
 
   // Auto-reset selected logic block card when sentence configuration changes
   useEffect(() => {
@@ -2219,6 +2230,39 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
                   </div>
                 );
               })}
+            </div>
+
+            {/* Tense Usage Frequency Indicator */}
+            <div className="w-full max-w-sm sm:max-w-md mx-auto pt-2 sm:pt-2.5 flex flex-col items-center gap-1.5 select-none">
+              <div className="w-full h-1.5 bg-[#141724] border border-zinc-800/80 rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full rounded-full"
+                  animate={{
+                    width: `${tenseFrequencyInfo.percentage}%`,
+                    backgroundColor: tenseFrequencyInfo.color,
+                  }}
+                  transition={{
+                    duration: 0.5,
+                    ease: [0.87, 0, 0.13, 1],
+                  }}
+                />
+              </div>
+              <motion.span
+                key={tenseFrequencyInfo.label}
+                initial={{ opacity: 0.6, y: -2 }}
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                  color: tenseFrequencyInfo.textColor,
+                }}
+                transition={{
+                  duration: 0.5,
+                  ease: [0.87, 0, 0.13, 1],
+                }}
+                className="text-[11px] sm:text-xs font-mono font-semibold tracking-wide text-center"
+              >
+                {tenseFrequencyInfo.label}
+              </motion.span>
             </div>
           </div>
         </div>
