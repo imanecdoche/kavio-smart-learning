@@ -1121,12 +1121,12 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
           {/* TOP SECTION: SENTENCE PREVIEW & MINIMALIST ICONS                          */}
           {/* ========================================================================= */}
           <div className="w-full flex flex-col items-center shrink-0 space-y-2.5">
-            {/* Main Sentence Preview Canvas (Pure Floating Canvas, Center-Aligned, No Box/Card) */}
-            <div className="w-full py-2.5 sm:py-3.5 flex flex-col items-center justify-center relative z-20 overflow-visible min-h-[4rem] sm:min-h-[4.5rem]">
+            {/* Main Sentence Preview Canvas (3-Block-Ready Zero Layout Shift Canvas) */}
+            <div className="w-full py-2 sm:py-2.5 flex flex-col items-center justify-center relative z-20 overflow-visible min-h-[6.5rem] sm:min-h-[7.75rem] md:min-h-[8.5rem]">
               <motion.div
                 layout="position"
                 transition={{ layout: { duration: 0.4, ease: [0.85, 0, 0.15, 1] } }}
-                className="inline-flex items-baseline justify-center flex-wrap gap-y-2 min-h-[3.5rem] sm:min-h-[4rem] text-2xl sm:text-3xl md:text-4xl font-mono font-bold text-center relative z-10"
+                className="inline-flex items-baseline justify-center content-center flex-wrap gap-y-1.5 w-full min-h-[4.5rem] sm:min-h-[5.5rem] md:min-h-[6.25rem] text-2xl sm:text-3xl md:text-4xl font-mono font-bold text-center relative z-10"
                 style={{ position: 'relative', isolation: 'isolate' }}
               >
                 <AnimatePresence initial={false}>
@@ -1189,18 +1189,23 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
                 </AnimatePresence>
               </motion.div>
 
-              {/* Dynamic Indonesian Translation Bar */}
-              {showTranslation && sentenceData.translation && (
-                <motion.div
-                  key={sentenceData.translation}
-                  initial={{ opacity: 0, y: -2 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.15 }}
-                  className="mt-2 text-xs sm:text-sm md:text-base font-sans italic text-zinc-400 font-normal tracking-wide text-center px-4"
-                >
-                  &ldquo;{sentenceData.translation}&rdquo;
-                </motion.div>
-              )}
+              {/* Dedicated Translation Slot (Reserved 3rd Block to Prevent Layout Shift) */}
+              <div className="w-full h-6 sm:h-7 mt-1.5 flex items-center justify-center px-4 overflow-hidden select-none">
+                <AnimatePresence mode="wait">
+                  {showTranslation && sentenceData.translation ? (
+                    <motion.div
+                      key={sentenceData.translation}
+                      initial={{ opacity: 0, y: -2 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -2 }}
+                      transition={{ duration: 0.15 }}
+                      className="text-xs sm:text-sm md:text-base font-sans italic text-zinc-400 font-normal tracking-wide text-center truncate max-w-full"
+                    >
+                      &ldquo;{sentenceData.translation}&rdquo;
+                    </motion.div>
+                  ) : null}
+                </AnimatePresence>
+              </div>
             </div>
 
             {/* 3. Form Switcher Bar: Minimalist Icons (+, -, ?, -?) */}
@@ -2062,7 +2067,7 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
               </div>
             </div>
 
-            {/* ROW 3: Real Switch Toggles (Terjemahan & Singkatan) */}
+            {/* ROW 3: Real Switch Toggles (Terjemahan & Use Contraction) */}
             <div className="flex items-center justify-center gap-6 sm:gap-8 pt-0.5">
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <button
@@ -2104,7 +2109,7 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
                     }`}
                   />
                 </button>
-                <span className="text-xs font-mono text-zinc-300 font-medium">Singkatan</span>
+                <span className="text-xs font-mono text-zinc-300 font-medium">Use Contraction</span>
               </label>
             </div>
           </div>
