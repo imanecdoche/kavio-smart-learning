@@ -487,7 +487,7 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
   const [nominalSuggestions, setNominalSuggestions] = useState([]);
   const [showNominalSuggestions, setShowNominalSuggestions] = useState(false);
   const [openPicker, setOpenPicker] = useState(null); // 'timeSignal' | 'subject' | 'predicate' | 'object' | null
-  const [selectedBlockIndex, setSelectedBlockIndex] = useState(null);
+  const [selectedBlockId, setSelectedBlockId] = useState(null);
   const [showTenseModal, setShowTenseModal] = useState(false);
   const [isPhysicalLandscape, setIsPhysicalLandscape] = useState(false);
   const [isManualLandscape, setIsManualLandscape] = useState(false);
@@ -1167,29 +1167,51 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
     return getTenseAlternativeInfo({ tense, aspect });
   }, [tense, aspect]);
 
-  // Auto-reset selected logic block card when sentence configuration changes
-  useEffect(() => {
-    setSelectedBlockIndex(null);
-  }, [
-    tense,
-    aspect,
-    sentenceType,
-    form,
-    sentenceData?.isPassive,
-    activeVerb,
-    activeComplement,
-    activeObject,
-    activeSubject,
-    useContraction,
-  ]);
+  const getBlockId = (block) => {
+    if (!block) return null;
+    if (block.category === 'PAST FUTURE' || block.category === 'FUTURE') {
+      return 'future';
+    }
+    return block.category.toLowerCase();
+  };
 
-  const isTimeSelected = selectedBlockIndex === 'time';
-  const activeSelectedBlock =
-    selectedBlockIndex === 'time'
-      ? sentenceTimeBlock
-      : typeof selectedBlockIndex === 'number'
-      ? sentenceLogicBlocks[selectedBlockIndex]
-      : null;
+  // Resolusi blok aktif: jika blok masih ada di konfigurasi baru, tetap aktif & dihighlight;
+  // jika bloknya hilang (tidak ada lagi pada konfigurasi baru), kembali ke normal (null)
+  const selectedBlockInfo = useMemo(() => {
+    if (!selectedBlockId) return null;
+
+    if (selectedBlockId === 'time') {
+      return {
+        type: 'time',
+        block: sentenceTimeBlock,
+        index: 'time',
+      };
+    }
+
+    const foundIndex = sentenceLogicBlocks.findIndex((b) => getBlockId(b) === selectedBlockId);
+    if (foundIndex !== -1 && sentenceLogicBlocks[foundIndex]) {
+      return {
+        type: 'logic',
+        block: sentenceLogicBlocks[foundIndex],
+        index: foundIndex,
+      };
+    }
+
+    return null;
+  }, [selectedBlockId, sentenceTimeBlock, sentenceLogicBlocks]);
+
+  // Kembalikan seleksi ke normal jika blok yang aktif hilang dari konfigurasi baru
+  useEffect(() => {
+    if (selectedBlockId && selectedBlockId !== 'time') {
+      const exists = sentenceLogicBlocks.some((b) => getBlockId(b) === selectedBlockId);
+      if (!exists) {
+        setSelectedBlockId(null);
+      }
+    }
+  }, [sentenceLogicBlocks, selectedBlockId]);
+
+  const isTimeSelected = selectedBlockInfo?.type === 'time';
+  const activeSelectedBlock = selectedBlockInfo?.block || null;
   const highlightedTokenIds = activeSelectedBlock?.tokenIds || [];
   const hasActiveSelection = Boolean(
     activeSelectedBlock && highlightedTokenIds.length > 0
@@ -1218,7 +1240,7 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
     setNominalSuggestions([]);
     setShowNominalSuggestions(false);
     setOpenPicker(null);
-    setSelectedBlockIndex(null);
+    setSelectedBlockId(null);
   };
 
   if (isLoading) {
@@ -2477,12 +2499,12 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
               tabIndex={0}
               aria-pressed={isTimeSelected}
               onClick={() =>
-                setSelectedBlockIndex((prev) => (prev === 'time' ? null : 'time'))
+                setSelectedBlockId((prev) => (prev === 'time' ? null : 'time'))
               }
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  setSelectedBlockIndex((prev) => (prev === 'time' ? null : 'time'));
+                  setSelectedBlockId((prev) => (prev === 'time' ? null : 'time'));
                 }
               }}
               className={`w-full max-w-sm sm:max-w-md mx-auto flex items-center justify-between px-3.5 sm:px-4 py-2 rounded-xl min-h-[38px] sm:min-h-[40px] cursor-pointer transition-all duration-200 select-none ${
@@ -2535,7 +2557,8 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
               {[0, 1, 2, 3].map((index) => {
                 const block = sentenceLogicBlocks[index];
                 if (block) {
-                  const isSelected = selectedBlockIndex === index;
+                  const blockId = getBlockId(block);
+                  const isSelected = selectedBlockInfo?.index === index;
                   return (
                     <motion.div
                       key={`${block.category}-${block.formula}-${index}`}
@@ -2546,12 +2569,12 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
                       tabIndex={0}
                       aria-pressed={isSelected}
                       onClick={() =>
-                        setSelectedBlockIndex((prev) => (prev === index ? null : index))
+                        setSelectedBlockId((prev) => (prev === blockId ? null : blockId))
                       }
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault();
-                          setSelectedBlockIndex((prev) => (prev === index ? null : index));
+                          setSelectedBlockId((prev) => (prev === blockId ? null : blockId));
                         }
                       }}
                       className={`flex flex-col items-center justify-center text-center p-2.5 sm:p-3 rounded-xl min-h-[82px] sm:min-h-[90px] cursor-pointer transition-all duration-200 select-none ${
