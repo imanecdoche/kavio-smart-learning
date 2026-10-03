@@ -117,7 +117,7 @@ export const KavioChainInspectorModal = ({
     let timeFormula = 'VERB-1';
     let timeCategory = 'PRESENT';
     if (isFuture) {
-      timeFormula = 'MODAL';
+      timeFormula = 'MODAL + BV';
       timeCategory = tense === 'PAST_FUTURE' ? 'PAST FUTURE' : 'FUTURE';
     } else if (isPast) {
       timeFormula = 'VERB-2';
@@ -126,15 +126,46 @@ export const KavioChainInspectorModal = ({
 
     // Derivasi untuk Waktu
     let timeDerivation = null;
-    if (isFuture) {
+    let timeStartIndex = -1;
+    let timeEndIndex = -1;
+    let timeHighlightIds = [];
+
+    if (isFuture && modalToken) {
+      const modalIdx = words.findIndex((w) => w.id === modalToken.id);
+      const nextWordIdx = modalIdx !== -1 && modalIdx + 1 < words.length ? modalIdx + 1 : modalIdx;
+      const nextWord = words[nextWordIdx];
+
+      timeStartIndex = modalIdx;
+      timeEndIndex = nextWord && modalIdx !== nextWordIdx ? nextWordIdx : modalIdx;
+      timeHighlightIds = nextWord && modalIdx !== nextWordIdx ? [modalToken.id, nextWord.id] : [modalToken.id];
+
       const modalBase = tense === 'PAST_FUTURE' ? 'WOULD' : 'WILL';
-      timeDerivation = (
-        <div className="flex items-center justify-center gap-2 text-zinc-400 font-mono text-xs sm:text-sm md:text-base">
-          <span>MODAL BASE:</span>
-          <span className="text-white font-extrabold">{modalBase}</span>
-        </div>
-      );
+      if (nextWord && modalIdx !== nextWordIdx) {
+        timeDerivation = (
+          <div className="flex items-center justify-center gap-2 text-zinc-400 font-mono text-xs sm:text-sm md:text-base">
+            <span>MODAL +</span>
+            <span className="text-cyan-400 font-bold">BV</span>
+            <span className="text-zinc-600">→</span>
+            <span>{modalToken.text.toUpperCase()} +</span>
+            <span className="text-cyan-400 font-extrabold">{nextWord.text.toUpperCase()}</span>
+          </div>
+        );
+      } else {
+        timeDerivation = (
+          <div className="flex items-center justify-center gap-2 text-zinc-400 font-mono text-xs sm:text-sm md:text-base">
+            <span>MODAL BASE:</span>
+            <span className="text-white font-extrabold">{modalBase}</span>
+          </div>
+        );
+      }
     } else {
+      if (firstPredicateToken) {
+        const wordIdx = words.findIndex((w) => w.id === firstPredicateToken.id);
+        timeStartIndex = wordIdx;
+        timeEndIndex = wordIdx;
+        timeHighlightIds = [firstPredicateToken.id];
+      }
+
       const firstLower = firstPredicateToken?.text?.toLowerCase() || '';
       if (/have|has|had/.test(firstLower)) {
         timeDerivation = (
@@ -172,21 +203,18 @@ export const KavioChainInspectorModal = ({
       }
     }
 
-    if (firstPredicateToken) {
-      const wordIdx = words.findIndex((w) => w.id === firstPredicateToken.id);
-      if (wordIdx !== -1) {
-        brackets.push({
-          key: tenseKey,
-          titleBlockKey: timeCategory,
-          position: 'bottom',
-          startIndex: wordIdx,
-          endIndex: wordIdx,
-          formula: timeFormula,
-          category: timeCategory,
-          highlightWordIds: [firstPredicateToken.id],
-          derivation: timeDerivation,
-        });
-      }
+    if (timeStartIndex !== -1) {
+      brackets.push({
+        key: tenseKey,
+        titleBlockKey: timeCategory,
+        position: 'bottom',
+        startIndex: timeStartIndex,
+        endIndex: timeEndIndex,
+        formula: timeFormula,
+        category: timeCategory,
+        highlightWordIds: timeHighlightIds,
+        derivation: timeDerivation,
+      });
     }
 
     titleBlocks.push({
@@ -396,32 +424,7 @@ export const KavioChainInspectorModal = ({
         label: 'SIMPLE',
       });
 
-      if (isFuture && modalToken && verbToken) {
-        // Future Simple: bracket TOP mengaitkan MODAL + BV
-        const mIdx = words.findIndex((w) => w.id === modalToken.id);
-        const vIdx = words.findIndex((w) => w.id === verbToken.id);
-        if (mIdx !== -1 && vIdx !== -1 && mIdx < vIdx) {
-          brackets.push({
-            key: simpleKey,
-            titleBlockKey: simpleKey,
-            position: 'top',
-            startIndex: mIdx,
-            endIndex: vIdx,
-            formula: 'MODAL + BV',
-            category: 'SIMPLE',
-            highlightWordIds: [modalToken.id, verbToken.id],
-            derivation: (
-              <div className="flex items-center justify-center gap-2 text-zinc-400 font-mono text-xs sm:text-sm md:text-base">
-                <span>MODAL +</span>
-                <span className="text-cyan-400 font-bold">BV</span>
-                <span className="text-zinc-600">→</span>
-                <span>{modalToken.text.toUpperCase()} +</span>
-                <span className="text-cyan-400 font-extrabold">{verbLookup.v1.toUpperCase()}</span>
-              </div>
-            ),
-          });
-        }
-      } else if (verbToken) {
+      if (verbToken) {
         const vIdx = words.findIndex((w) => w.id === verbToken.id);
         if (vIdx !== -1) {
           const vText = verbToken.text.toUpperCase();
@@ -431,7 +434,7 @@ export const KavioChainInspectorModal = ({
             position: 'top',
             startIndex: vIdx,
             endIndex: vIdx,
-            formula: isPast ? 'V2' : 'V1 / V-S',
+            formula: isFuture ? 'BV (BASE FORM)' : isPast ? 'V2' : 'V1 / V-S',
             category: 'SIMPLE',
             highlightWordIds: [verbToken.id],
             derivation: (
