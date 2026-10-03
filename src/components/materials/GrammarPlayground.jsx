@@ -15,6 +15,7 @@ import {
   getSentenceLogicBlocks,
   getSentenceTimeBlock,
   getTenseFrequencyInfo,
+  getTenseAlternativeInfo,
 } from '../../utils/grammarEngine.js';
 import { lookupVerb, getVerbSuggestions } from '../../data/dictionary/verbsData';
 import { lookupNominal, getNominalSuggestions } from '../../data/dictionary/nominalData';
@@ -553,6 +554,18 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
     setTimeSignal(signals[0] || 'none');
   };
 
+  // Switch to alternative natural tense
+  const handleApplyAlternative = (alt) => {
+    if (!alt) return;
+    setTense(alt.tense);
+    setAspect(alt.aspect);
+    setCustomTimeSignalInput('');
+    if (timeSignal !== 'none') {
+      const signals = activeSignalsMap[alt.aspect]?.[alt.tense] || [];
+      setTimeSignal(signals[0] || 'none');
+    }
+  };
+
   const handleCustomVerbChange = (val) => {
     setCustomVerbInput(val);
     const trimmed = val.trim();
@@ -978,6 +991,10 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
     return getTenseFrequencyInfo({ tense, aspect });
   }, [tense, aspect]);
 
+  const tenseAlternativeInfo = useMemo(() => {
+    return getTenseAlternativeInfo({ tense, aspect });
+  }, [tense, aspect]);
+
   // Auto-reset selected logic block card when sentence configuration changes
   useEffect(() => {
     setSelectedBlockIndex(null);
@@ -1262,11 +1279,11 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
             {/* ROW 1: Fixed 1-Row Horizontal Main Controls (Mode | Pasif | Waktu Utama | Aspek Waktu) */}
             <div className="flex items-center justify-between gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
               {/* Mode Switcher */}
-              <div className="inline-flex rounded-lg bg-[#181b28] p-0.5 shrink-0 h-8">
+              <div className="inline-flex rounded-lg bg-[#181b28] p-0.5 shrink-0 h-9">
                 <button
                   type="button"
                   onClick={() => handleSentenceTypeChange('verbal')}
-                  className={`h-7 px-3 rounded-md text-xs font-mono font-bold transition-all border-0 cursor-pointer ${
+                  className={`h-8 px-3.5 rounded-md text-xs sm:text-[13px] font-mono font-bold transition-all border-0 cursor-pointer ${
                     sentenceType === 'verbal'
                       ? 'bg-blue-600 text-white shadow'
                       : 'bg-transparent text-zinc-400 hover:text-white'
@@ -1277,7 +1294,7 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
                 <button
                   type="button"
                   onClick={() => handleSentenceTypeChange('nominal')}
-                  className={`h-7 px-3 rounded-md text-xs font-mono font-bold transition-all border-0 cursor-pointer ${
+                  className={`h-8 px-3.5 rounded-md text-xs sm:text-[13px] font-mono font-bold transition-all border-0 cursor-pointer ${
                     sentenceType === 'nominal'
                       ? 'bg-purple-600 text-white shadow'
                       : 'bg-transparent text-zinc-400 hover:text-white'
@@ -1289,7 +1306,7 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
 
               {/* Toggle Switch Pasif (Real Switch, Fixed Position & Dimension) */}
               <div
-                className={`flex items-center gap-2 h-8 px-2.5 rounded-lg bg-[#181b28] shrink-0 transition-opacity ${
+                className={`flex items-center gap-2 h-9 px-3 rounded-lg bg-[#181b28] shrink-0 transition-opacity ${
                   sentenceType !== 'verbal' || !isCurrentVerbTransitive
                     ? 'opacity-40 cursor-not-allowed'
                     : 'opacity-100'
@@ -1338,7 +1355,7 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
               </div>
 
               {/* Waktu Utama (Fixed Segmented Control) */}
-              <div className="grid grid-cols-4 gap-0.5 bg-[#181b28] p-0.5 rounded-lg h-8 shrink-0 w-full sm:w-[285px]">
+              <div className="grid grid-cols-4 gap-0.5 bg-[#181b28] p-0.5 rounded-lg h-9 shrink-0 w-full sm:w-[295px]">
                 {[
                   { id: 'PRESENT', label: 'PRESENT' },
                   { id: 'PAST', label: 'PAST' },
@@ -1349,7 +1366,7 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
                     key={t.id}
                     type="button"
                     onClick={() => handleTenseChange(t.id)}
-                    className={`h-7 rounded-md text-[10px] sm:text-[11px] font-mono font-bold transition-all border-0 cursor-pointer ${
+                    className={`h-8 rounded-md text-[11px] sm:text-xs font-mono font-bold transition-all border-0 cursor-pointer ${
                       tense === t.id
                         ? 'bg-blue-600 text-white shadow'
                         : 'bg-transparent text-zinc-400 hover:text-white'
@@ -1361,7 +1378,7 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
               </div>
 
               {/* Aspek Waktu (Fixed Segmented Control) */}
-              <div className="grid grid-cols-4 gap-0.5 bg-[#181b28] p-0.5 rounded-lg h-8 shrink-0 w-full sm:w-[290px]">
+              <div className="grid grid-cols-4 gap-0.5 bg-[#181b28] p-0.5 rounded-lg h-9 shrink-0 w-full sm:w-[305px]">
                 {[
                   { id: 'SIMPLE', label: 'SIMPLE' },
                   { id: 'CONTINUOUS', label: 'CONT.' },
@@ -1380,7 +1397,7 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
                           ? 'Kalimat nominal tidak menggunakan aspek Perfect Continuous'
                           : undefined
                       }
-                      className={`h-7 rounded-md text-[10px] sm:text-[11px] font-mono font-bold transition-all border-0 ${
+                      className={`h-8 rounded-md text-[11px] sm:text-xs font-mono font-bold transition-all border-0 ${
                         isNominalDisabled
                           ? 'opacity-30 cursor-not-allowed text-zinc-600 bg-transparent'
                           : aspect === a.id
@@ -2063,7 +2080,12 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
                     }`}
                   />
                 </button>
-                <span className="text-xs font-mono text-zinc-300 font-medium">Terjemahan</span>
+                <span className="text-xs font-mono text-zinc-300 font-medium flex items-center gap-1.5">
+                  Terjemahan
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-mono font-bold tracking-wider uppercase bg-blue-500/20 text-blue-400 select-none">
+                    BETA
+                  </span>
+                </span>
               </label>
 
               <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -2231,6 +2253,61 @@ export const GrammarPlayground = ({ onBack, initialConfig }) => {
                 );
               })}
             </div>
+
+            {/* Single-Line ALTERNATIF Card */}
+            <motion.div
+              key={`alt-${tense}-${aspect}-${tenseAlternativeInfo ? tenseAlternativeInfo.label : 'none'}`}
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.18 }}
+              role={tenseAlternativeInfo ? 'button' : undefined}
+              tabIndex={tenseAlternativeInfo ? 0 : -1}
+              aria-label={
+                tenseAlternativeInfo
+                  ? `Pindah ke tenses alternatif: ${tenseAlternativeInfo.label}`
+                  : 'Tidak ada alternatif tenses'
+              }
+              onClick={() => {
+                if (tenseAlternativeInfo) {
+                  handleApplyAlternative(tenseAlternativeInfo);
+                }
+              }}
+              onKeyDown={(e) => {
+                if (tenseAlternativeInfo && (e.key === 'Enter' || e.key === ' ')) {
+                  e.preventDefault();
+                  handleApplyAlternative(tenseAlternativeInfo);
+                }
+              }}
+              className={`w-full max-w-sm sm:max-w-md mx-auto flex items-center justify-between px-3.5 sm:px-4 py-2 rounded-xl min-h-[38px] sm:min-h-[40px] transition-all duration-200 select-none ${
+                tenseAlternativeInfo
+                  ? 'bg-[#141724] border border-zinc-700/80 shadow-md hover:border-cyan-500/80 hover:bg-[#171b2d] cursor-pointer active:scale-[0.99]'
+                  : 'bg-[#11131c]/50 border border-dashed border-zinc-800/80 cursor-default opacity-60'
+              }`}
+            >
+              <span
+                className={`text-[10px] sm:text-[11px] font-mono font-bold tracking-widest uppercase transition-colors duration-200 ${
+                  tenseAlternativeInfo ? 'text-cyan-400' : 'text-zinc-600'
+                }`}
+              >
+                ALTERNATIF
+              </span>
+              <span className="text-xs sm:text-sm font-mono tracking-wide transition-colors duration-200 flex items-center">
+                {tenseAlternativeInfo ? (
+                  <span className="text-white font-extrabold">
+                    {tenseAlternativeInfo.label}
+                  </span>
+                ) : (
+                  <span className="text-zinc-600 font-bold">—</span>
+                )}
+              </span>
+              <span
+                className={`text-xs sm:text-sm font-mono italic truncate max-w-[130px] sm:max-w-[160px] transition-colors duration-200 ${
+                  tenseAlternativeInfo ? 'text-zinc-400' : 'text-zinc-700 select-none'
+                }`}
+              >
+                {tenseAlternativeInfo ? `“${tenseAlternativeInfo.hint}”` : '—'}
+              </span>
+            </motion.div>
 
             {/* Tense Usage Frequency Indicator */}
             <div className="w-full max-w-sm sm:max-w-md mx-auto pt-2 sm:pt-2.5 flex flex-col items-center gap-1.5 select-none">

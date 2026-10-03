@@ -3269,5 +3269,74 @@ export function getTenseFrequencyInfo({ tense, aspect }) {
   return match;
 }
 
+/**
+ * Alternatif tense alami yang memiliki makna serupa namun jauh lebih sering digunakan oleh penutur asli (English speakers).
+ */
+const TENSE_ALTERNATIVES_MAP = {
+  PRESENT: {
+    'PER.CONT': {
+      tense: 'PRESENT',
+      aspect: 'CONTINUOUS',
+      label: 'PRESENT CONTINUOUS',
+      hint: 'Lebih umum & ringkas',
+    },
+  },
+  PAST: {
+    PERFECT: {
+      tense: 'PAST',
+      aspect: 'SIMPLE',
+      label: 'SIMPLE PAST',
+      hint: 'Sering dipakai penutur asli',
+    },
+    'PER.CONT': {
+      tense: 'PAST',
+      aspect: 'CONTINUOUS',
+      label: 'PAST CONTINUOUS',
+      hint: 'Jauh lebih sering dipakai',
+    },
+  },
+  FUTURE: {
+    CONTINUOUS: {
+      tense: 'PRESENT',
+      aspect: 'CONTINUOUS',
+      label: 'PRESENT CONTINUOUS',
+      hint: 'Lebih umum untuk rencana',
+    },
+    PERFECT: {
+      tense: 'FUTURE',
+      aspect: 'SIMPLE',
+      label: 'SIMPLE FUTURE',
+      hint: 'Jauh lebih praktis & wajar',
+    },
+    'PER.CONT': {
+      tense: 'FUTURE',
+      aspect: 'SIMPLE',
+      label: 'SIMPLE FUTURE',
+      hint: 'Bentuk paling sering dipakai',
+    },
+  },
+  PAST_FUTURE: {
+    CONTINUOUS: {
+      tense: 'PAST_FUTURE',
+      aspect: 'SIMPLE',
+      label: 'PAST FUTURE SIMPLE',
+      hint: 'Lebih sering & lugas',
+    },
+    'PER.CONT': {
+      tense: 'PAST_FUTURE',
+      aspect: 'PERFECT',
+      label: 'PAST FUTURE PERFECT',
+      hint: 'Lebih umum dalam pengandaian',
+    },
+  },
+};
+
+export function getTenseAlternativeInfo({ tense, aspect }) {
+  const normTense = tense || 'PRESENT';
+  const normAspect = aspect || 'SIMPLE';
+  return TENSE_ALTERNATIVES_MAP[normTense]?.[normAspect] || null;
+}
+
+
 
 
